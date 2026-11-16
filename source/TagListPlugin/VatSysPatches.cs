@@ -7,18 +7,13 @@ using vatSysToolbox;
 namespace TagListPlugin;
 
 /// <summary>
-/// Harmony patches that send vatSys events (for example, <see cref="QuickTagAddedMessage"/>) with
-/// <see cref="WeakReferenceMessenger.Default"/>. vatSys does not send events for these changes.
+/// Harmony patches that send vatSys events via <see cref="WeakReferenceMessenger.Default"/>.
+/// vatSys does not send events for these changes, so we need to inject them ourselves.
 /// </summary>
-/// <remarks>
-/// The JIT compiler can inline small methods (for example, the setter of <see cref="QuickTag.LabelData"/>). Then the
-/// patch does not run for that caller, and there is no event.
-/// </remarks>
 public static class VatSysPatches
 {
     const string HarmonyId = "dev.eoinmotherway.tag-list";
 
-    // vatSys can call the patched methods on any thread
     static IErrorReporter? _errorReporter;
 
     /// <exception cref="MissingMemberException">
@@ -34,23 +29,21 @@ public static class VatSysPatches
             FindMethod(typeof(RDP), nameof(RDP.AddQuickTag)),
             postfix: Patch(nameof(AddQuickTagPostfix)));
 
-        // The Quick Tag window replaces the quick tag with a new quick tag. Then it copies the CFL and the global ops
-        // text to the new quick tag. The setter patches send these changes.
         harmony.Patch(
             FindMethod(typeof(RDP), nameof(RDP.EditQuickTag)),
             postfix: Patch(nameof(EditQuickTagPostfix)));
 
-        // Many parts of vatSys remove quick tags (for example, when a flight plan is coupled to the track)
         harmony.Patch(
             FindMethod(typeof(RDP), nameof(RDP.RemoveQuickTag)),
             postfix: Patch(nameof(RemoveQuickTagPostfix)));
 
-        // The text field in the label, the Quick Tag window, and other plugins set the global ops text
         harmony.Patch(
             FindSetter(typeof(QuickTag), nameof(QuickTag.LabelData)),
             postfix: Patch(nameof(LabelDataPostfix)));
 
-        harmony.Patch(FindSetter(typeof(QuickTag), nameof(QuickTag.CFL)), postfix: Patch(nameof(CflPostfix)));
+        harmony.Patch(
+            FindSetter(typeof(QuickTag), nameof(QuickTag.CFL)),
+            postfix: Patch(nameof(CflPostfix)));
 
         // vatSys sets the altitude at each radar update, also when it does not change
         harmony.Patch(
@@ -111,8 +104,6 @@ public static class VatSysPatches
         Send(new RadarTrackAltitudeChangedMessage(__instance));
     }
 
-    // The messenger calls the recipients on this thread. An exception goes to the vatSys code that called the patched
-    // method. Thus, report it here.
     static void Send<TMessage>(TMessage message)
         where TMessage : class
     {
@@ -122,6 +113,7 @@ public static class VatSysPatches
         }
         catch (Exception ex)
         {
+            // Ensure all exceptions are caught here, otherwise they'll be thrown back to the patches vatSys method.
             _errorReporter?.ReportError(ex, $"Cannot send the vatSys event {typeof(TMessage).Name}");
         }
     }

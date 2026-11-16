@@ -7,28 +7,34 @@ namespace vatSysToolbox.Windows;
 
 /// <summary>
 /// A form with no border or title bar, at the mouse cursor. The form closes when it is not the active form (for
-/// example, when the user clicks outside it).
+/// example, when the user clicks outside it). When the form closes, it disposes the view model of the content
+/// (<see cref="FrameworkElement.DataContext"/>) if the view model is <see cref="IDisposable"/> or
+/// <see cref="IAsyncDisposable"/>.
 /// </summary>
 public class PopupForm : Form
 {
+    readonly FrameworkElement _view;
+    readonly IErrorReporter _errorReporter;
+
     bool _isClosing;
 
     public IWindowHandle WindowHandle { get; }
 
-    public PopupForm(Func<IWindowHandle, FrameworkElement> createView)
+    public PopupForm(Func<IWindowHandle, FrameworkElement> createView, IErrorReporter errorReporter)
     {
+        _errorReporter = errorReporter;
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         Location = Cursor.Position;
 
         WindowHandle = new PopupWindowHandle(this);
-        var view = createView(WindowHandle);
+        _view = createView(WindowHandle);
 
         // A Canvas measures its child with no size limit. The view then always has its natural size, and SizeChanged
         // occurs when WPF has done the layout of the view.
         var canvas = new Canvas();
-        canvas.Children.Add(view);
+        canvas.Children.Add(_view);
 
         var elementHost = new ElementHost
         {
@@ -37,9 +43,9 @@ public class PopupForm : Form
         };
         Controls.Add(elementHost);
 
-        view.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-        ResizeToContent(view.DesiredSize);
-        view.SizeChanged += (_, e) => ResizeToContent(e.NewSize);
+        _view.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+        ResizeToContent(_view.DesiredSize);
+        _view.SizeChanged += (_, e) => ResizeToContent(e.NewSize);
     }
 
     void ResizeToContent(System.Windows.Size contentSize)
@@ -53,6 +59,12 @@ public class PopupForm : Form
     {
         base.OnFormClosing(e);
         _isClosing = !e.Cancel;
+    }
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        base.OnFormClosed(e);
+        ViewModelDisposer.Dispose(_view, _errorReporter);
     }
 
     // The form also deactivates while it closes. Do not close it a second time.

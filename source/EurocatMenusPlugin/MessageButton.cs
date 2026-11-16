@@ -43,9 +43,9 @@ public class MessageButton
         try
         {
             if (_configuration.Recipient is null)
-                await _messenger.Broadcast(_configuration.MessageType, _content);
+                await _messenger.BroadcastAsync(_configuration.MessageType, _content);
             else
-                await _messenger.Send(_configuration.Recipient, _configuration.MessageType, _content);
+                await _messenger.SendAsync(_configuration.Recipient, _configuration.MessageType, _content);
         }
         catch (Exception ex)
         {

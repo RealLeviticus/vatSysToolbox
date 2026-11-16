@@ -80,7 +80,7 @@ public class MenuEvents(IPluginMessenger messenger, IGuiInvoker guiInvoker, IErr
             var content = new MessageContent(
                 JsonContentType,
                 Encoding.UTF8.GetBytes(payload?.ToJsonString() ?? "{}"));
-            await messenger.Broadcast(name, content);
+            await messenger.BroadcastAsync(name, content);
         }
         catch (Exception ex)
         {

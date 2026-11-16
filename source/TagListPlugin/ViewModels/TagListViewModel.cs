@@ -15,8 +15,9 @@ namespace TagListPlugin.ViewModels;
 /// <remarks>
 /// Make this class on the UI thread. The messenger keeps only a weak reference to it.
 /// </remarks>
-public partial class TagListViewModel : ObservableObject
+public partial class TagListViewModel : ObservableObject, IDisposable
 {
+    readonly IMessenger _messenger = null!;
     readonly IGuiInvoker _guiInvoker = null!;
     readonly IErrorReporter _errorReporter = null!;
 
@@ -31,30 +32,33 @@ public partial class TagListViewModel : ObservableObject
 
     public TagListViewModel(IMessenger messenger, IGuiInvoker guiInvoker, IErrorReporter errorReporter)
     {
+        _messenger = messenger;
         _guiInvoker = guiInvoker;
         _errorReporter = errorReporter;
 
         // The list gets the events for all the items. If each item subscribed when it is added, the events that come
         // just after the add event (for example, the global ops text after an edit) could come before the
         // subscription.
-        messenger.Register<TagListViewModel, QuickTagAddedMessage>(
+        _messenger.Register<TagListViewModel, QuickTagAddedMessage>(
             this,
-            (viewModel, message) => viewModel.OnGui(() => viewModel.AddItem(message.QuickTag)));
-        messenger.Register<TagListViewModel, QuickTagRemovedMessage>(
+            (viewModel, message) => viewModel.AddItem(message.QuickTag));
+        _messenger.Register<TagListViewModel, QuickTagRemovedMessage>(
             this,
-            (viewModel, message) => viewModel.OnGui(() => viewModel.RemoveItem(message.QuickTag)));
-        messenger.Register<TagListViewModel, QuickTagLabelDataChangedMessage>(
+            (viewModel, message) => viewModel.RemoveItem(message.QuickTag));
+        _messenger.Register<TagListViewModel, QuickTagLabelDataChangedMessage>(
             this,
-            (viewModel, message) => viewModel.OnGui(() =>
-                viewModel.FindItem(message.QuickTag)?.SetGlobalOps(message.QuickTag.LabelData)));
+            (viewModel, message) => viewModel.SetGlobalOps(message.QuickTag));
+        
         // vatSys sends this event for all the radar tracks at each radar update. Most tracks have no quick tag. Do not
         // post these to the UI thread.
-        messenger.Register<TagListViewModel, RadarTrackAltitudeChangedMessage>(
+        _messenger.Register<TagListViewModel, RadarTrackAltitudeChangedMessage>(
             this,
             (viewModel, message) =>
             {
                 if (message.RadarTrack.QuickTag is not null)
-                    viewModel.OnGui(() => viewModel.SetAltitude(message.RadarTrack));
+                {
+                    viewModel.SetAltitude(message.RadarTrack);
+                }
             });
 
         foreach (var quickTag in RDP.QuickTags)
@@ -63,34 +67,48 @@ public partial class TagListViewModel : ObservableObject
         }
     }
 
-    // vatSys sends the events on its own thread
-    void OnGui(Action action) => _guiInvoker.InvokeOnGUI(_ => action());
-
     void AddItem(QuickTag quickTag)
     {
-        if (FindItem(quickTag) is not null)
-            return;
-        
-        Items.Add(new TagListItemViewModel(quickTag));
+        _guiInvoker.InvokeOnGUI(_ =>
+        {
+            if (FindItem(quickTag) is not null)
+                return;
+            
+            Items.Add(new TagListItemViewModel(quickTag));
+        });
     }
 
     void RemoveItem(QuickTag quickTag)
     {
-        if (FindItem(quickTag) is not { } item)
-            return;
-        
-        Items.Remove(item);
+        _guiInvoker.InvokeOnGUI(_ =>
+        {
+            if (FindItem(quickTag) is not { } item)
+                return;
+            
+            Items.Remove(item);
+        });
+    }
+
+    void SetGlobalOps(QuickTag quickTag)
+    {
+        _guiInvoker.InvokeOnGUI(_ =>
+        {
+            FindItem(quickTag)?.SetGlobalOps(quickTag.LabelData);
+        });
     }
 
     // vatSys can couple a quick tag to a new radar track (for example, when the aircraft reconnects with the same
     // code). Thus, find the item from the quick tag of the radar track.
     void SetAltitude(RDP.RadarTrack radarTrack)
     {
-        // vatSys can remove the quick tag before this runs on the UI thread
-        if (radarTrack.QuickTag is null)
-            return;
+        _guiInvoker.InvokeOnGUI(_ =>
+        {
+            // vatSys can remove the quick tag before this runs on the UI thread
+            if (radarTrack.QuickTag is null)
+                return;
 
-        FindItem(radarTrack.QuickTag)?.SetAltitude(radarTrack.CorrectedAltitude);
+            FindItem(radarTrack.QuickTag)?.SetAltitude(radarTrack.CorrectedAltitude);
+        });
     }
 
     TagListItemViewModel? FindItem(QuickTag quickTag)
@@ -114,5 +132,10 @@ public partial class TagListViewModel : ObservableObject
         {
             _errorReporter.ReportError(ex, "Cannot delete the quick tag");
         }
+    }
+
+    public void Dispose()
+    {
+        _messenger.UnregisterAll(this);
     }
 }

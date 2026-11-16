@@ -144,9 +144,10 @@ workQueue.Enqueue(async () => await UpdateSequence());
 
 `IPluginMessenger` sends messages to other plugins in the same vatSys process. The messages stay in memory.
 
-- `Send` sends a message to one plugin.
-- `Broadcast` sends a message to all the other plugins.
-- `Request` sends a request to one plugin, and waits for the reply.
+- `SendAsync` sends a message to one plugin.
+- `BroadcastAsync` sends a message to all the other plugins.
+- `RequestAsync` sends a request to one plugin, and waits for the reply.
+- `Send` and `Broadcast` send a message, but do not wait for the message to go into the queue. If the message cannot be sent, the messenger reports the error.
 
 Each plugin has an inbound queue. If the recipient is not ready, the message stays in its queue until the recipient calls `Start`. Add your handlers before you call `Start`.
 
@@ -164,8 +165,8 @@ messenger.HandleRequests("dev.example.my-plugin.get-sequence", (request, cancell
 
 messenger.Start();
 
-await messenger.Broadcast("dev.example.my-plugin.sequence-updated", sequence, json);
-var reply = await messenger.Request("OtherPlugin", "dev.example.other-plugin.get-status", query, json);
+await messenger.BroadcastAsync("dev.example.my-plugin.sequence-updated", sequence, json);
+var reply = await messenger.RequestAsync("OtherPlugin", "dev.example.other-plugin.get-status", query, json);
 ```
 
 Use a reverse domain name as the prefix of each message type (for example, `dev.example.my-plugin.sequence-updated`). This prevents conflicts between plugins.

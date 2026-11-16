@@ -9,7 +9,7 @@ public static class MessagingExtensionMethods
         return new MessageContent(serializer.ContentType, serializer.Serialize(value));
     }
 
-    public static Task Send<T>(
+    public static Task SendAsync<T>(
         this IPluginMessenger messenger,
         string recipient,
         string type,
@@ -17,20 +17,20 @@ public static class MessagingExtensionMethods
         IMessageSerializer serializer,
         CancellationToken cancellationToken = default)
     {
-        return messenger.Send(recipient, type, serializer.ToContent(value), cancellationToken);
+        return messenger.SendAsync(recipient, type, serializer.ToContent(value), cancellationToken);
     }
 
-    public static Task Broadcast<T>(
+    public static Task BroadcastAsync<T>(
         this IPluginMessenger messenger,
         string type,
         T value,
         IMessageSerializer serializer,
         CancellationToken cancellationToken = default)
     {
-        return messenger.Broadcast(type, serializer.ToContent(value), cancellationToken);
+        return messenger.BroadcastAsync(type, serializer.ToContent(value), cancellationToken);
     }
 
-    public static Task<PluginMessage> Request<T>(
+    public static Task<PluginMessage> RequestAsync<T>(
         this IPluginMessenger messenger,
         string recipient,
         string type,
@@ -38,7 +38,7 @@ public static class MessagingExtensionMethods
         IMessageSerializer serializer,
         CancellationToken cancellationToken = default)
     {
-        return messenger.Request(recipient, type, serializer.ToContent(value), cancellationToken);
+        return messenger.RequestAsync(recipient, type, serializer.ToContent(value), cancellationToken);
     }
 
     /// <summary>

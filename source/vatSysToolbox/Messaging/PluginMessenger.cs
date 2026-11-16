@@ -20,28 +20,53 @@ public interface IPluginMessenger
     void Start();
 
     /// <summary>
+    /// Sends a message to one plugin. This method does not wait for the message to go into the inbound queue of the
+    /// recipient. If the message cannot be sent, the messenger reports the error.
+    /// </summary>
+    void Send(string recipient, string type, MessageContent content);
+
+    /// <summary>
     /// Sends a message to one plugin. The task completes when the message is in the inbound queue of the recipient.
     /// </summary>
-    Task Send(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default);
+    Task SendAsync(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a message to all the other plugins that have a messenger. This method does not wait for the message to go
+    /// into the inbound queues of the recipients. If the message cannot be sent, the messenger reports the error.
+    /// </summary>
+    void Broadcast(string type, MessageContent content);
 
     /// <summary>
     /// Sends a message to all the other plugins that have a messenger.
     /// The task completes when the message is in the inbound queue of each recipient.
     /// </summary>
-    Task Broadcast(string type, MessageContent content, CancellationToken cancellationToken = default);
+    Task BroadcastAsync(string type, MessageContent content, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sends a request to one plugin, and waits for the reply.
     /// You must call <see cref="Start"/> before the reply can be received.
     /// </summary>
     /// <exception cref="MessagingException">The recipient could not handle the request.</exception>
-    Task<PluginMessage> Request(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default);
+    Task<PluginMessage> RequestAsync(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a handler for the messages of one type. A type can have more than one handler.
     /// Dispose the return value to remove the handler.
     /// </summary>
     IDisposable Subscribe(string type, Func<PluginMessage, CancellationToken, Task> handler);
+
+    /// <summary>
+    /// Adds a synchronous handler for the messages of one type. A type can have more than one handler.
+    /// Dispose the return value to remove the handler.
+    /// </summary>
+    IDisposable Subscribe(string type, Action<PluginMessage> handler);
+
+    /// <summary>
+    /// Adds a synchronous handler for the messages of one type. Use this overload if the handler does not use the
+    /// content of the message. A type can have more than one handler.
+    /// Dispose the return value to remove the handler.
+    /// </summary>
+    IDisposable Subscribe(string type, Action handler);
 
     /// <summary>
     /// Adds the handler for the requests of one type. A type can have only one request handler.
@@ -96,17 +121,27 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         _receiver.Start();
     }
 
-    public Task Send(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default)
+    public void Send(string recipient, string type, MessageContent content)
+    {
+        _ = SendWithoutWaiting(CreateEnvelope(EnvelopeKind.Message, recipient, type, content));
+    }
+
+    public Task SendAsync(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default)
     {
         return _transport.Send(CreateEnvelope(EnvelopeKind.Message, recipient, type, content), cancellationToken);
     }
 
-    public Task Broadcast(string type, MessageContent content, CancellationToken cancellationToken = default)
+    public void Broadcast(string type, MessageContent content)
+    {
+        _ = SendWithoutWaiting(CreateEnvelope(EnvelopeKind.Message, null, type, content));
+    }
+
+    public Task BroadcastAsync(string type, MessageContent content, CancellationToken cancellationToken = default)
     {
         return _transport.Send(CreateEnvelope(EnvelopeKind.Message, null, type, content), cancellationToken);
     }
 
-    public async Task<PluginMessage> Request(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default)
+    public async Task<PluginMessage> RequestAsync(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default)
     {
         var request = CreateEnvelope(EnvelopeKind.Request, recipient, type, content);
         var reply = new TaskCompletionSource<PluginMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -151,6 +186,20 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
                     _messageHandlers.Remove(type);
             }
         });
+    }
+
+    public IDisposable Subscribe(string type, Action<PluginMessage> handler)
+    {
+        return Subscribe(type, (message, _) =>
+        {
+            handler(message);
+            return Task.CompletedTask;
+        });
+    }
+
+    public IDisposable Subscribe(string type, Action handler)
+    {
+        return Subscribe(type, _ => handler());
     }
 
     public IDisposable HandleRequests(string type, Func<PluginMessage, CancellationToken, Task<MessageContent>> handler)
@@ -280,6 +329,18 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         catch (Exception ex)
         {
             _errorReporter.ReportError(ex, $"Could not send the reply for the request {request.Type} to {request.Sender}");
+        }
+    }
+
+    async Task SendWithoutWaiting(Envelope envelope)
+    {
+        try
+        {
+            await _transport.Send(envelope, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _errorReporter.ReportError(ex, $"Could not send the message {envelope.Type}");
         }
     }
 

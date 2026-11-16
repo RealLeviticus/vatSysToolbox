@@ -10,7 +10,7 @@ namespace vatSysToolbox.Windows;
 /// window at that location again. A window that sizes to its content gets its size from the content, and not the last
 /// size.
 /// </summary>
-public class WindowManager(IGuiInvoker guiInvoker)
+public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
 {
     readonly Dictionary<string, VatSysForm> _forms = new();
     readonly Dictionary<string, System.Drawing.Rectangle> _lastBounds = new();
@@ -84,7 +84,7 @@ public class WindowManager(IGuiInvoker guiInvoker)
     {
         guiInvoker.InvokeOnGUI(mainForm =>
         {
-            var form = new PopupForm(createView);
+            var form = new PopupForm(createView, errorReporter);
             MMI.EnsureWindowVisible(form);
             form.Show(mainForm);
         });
@@ -113,16 +113,16 @@ public class WindowManager(IGuiInvoker guiInvoker)
             if (!_forms.ContainsKey(key))
                 return;
         }
+        
+        VatSysForm? form;
+        lock (_gate)
+        {
+            if (!_forms.TryGetValue(key, out form))
+                return;
+        }
 
         guiInvoker.InvokeOnGUI(_ =>
         {
-            VatSysForm? form;
-            lock (_gate)
-            {
-                if (!_forms.TryGetValue(key, out form))
-                    return;
-            }
-
             try
             {
                 form.ForceClose();
@@ -145,7 +145,7 @@ public class WindowManager(IGuiInvoker guiInvoker)
         Size? size,
         Action<VatSysForm>? configureForm)
     {
-        var form = new VatSysForm(title, createView, sizeToContent, canClose, canMinimise)
+        var form = new VatSysForm(title, createView, errorReporter, sizeToContent, canClose, canMinimise)
         {
             StartPosition = FormStartPosition.CenterParent
         };

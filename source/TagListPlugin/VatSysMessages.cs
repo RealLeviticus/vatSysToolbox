@@ -2,44 +2,12 @@ using vatsys;
 
 namespace TagListPlugin;
 
-// The vatSys events that VatSysPatches sends with the weak reference messenger. vatSys sends them on its own thread.
+public record QuickTagAddedMessage(QuickTag QuickTag);
 
-/// <summary>
-/// vatSys added a quick tag.
-/// </summary>
-public class QuickTagAddedMessage(QuickTag quickTag)
-{
-    public QuickTag QuickTag { get; } = quickTag;
-}
+public record QuickTagRemovedMessage(QuickTag QuickTag);
 
-/// <summary>
-/// vatSys removed a quick tag.
-/// </summary>
-public class QuickTagRemovedMessage(QuickTag quickTag)
-{
-    public QuickTag QuickTag { get; } = quickTag;
-}
+public record QuickTagLabelDataChangedMessage(QuickTag QuickTag);
 
-/// <summary>
-/// The global ops text of a quick tag changed.
-/// </summary>
-public class QuickTagLabelDataChangedMessage(QuickTag quickTag)
-{
-    public QuickTag QuickTag { get; } = quickTag;
-}
+public record QuickTagCflChangedMessage(QuickTag QuickTag);
 
-/// <summary>
-/// The CFL of a quick tag changed.
-/// </summary>
-public class QuickTagCflChangedMessage(QuickTag quickTag)
-{
-    public QuickTag QuickTag { get; } = quickTag;
-}
-
-/// <summary>
-/// The altitude of a radar track changed.
-/// </summary>
-public class RadarTrackAltitudeChangedMessage(RDP.RadarTrack radarTrack)
-{
-    public RDP.RadarTrack RadarTrack { get; } = radarTrack;
-}
+public record RadarTrackAltitudeChangedMessage(RDP.RadarTrack RadarTrack);

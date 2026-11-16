@@ -7,7 +7,9 @@ using vatsys;
 namespace vatSysToolbox.Windows;
 
 /// <summary>
-/// A vatSys form that hosts WPF content.
+/// A vatSys form that hosts WPF content. When the form closes, it disposes the view model of the content
+/// (<see cref="FrameworkElement.DataContext"/>) if the view model is <see cref="IDisposable"/> or
+/// <see cref="IAsyncDisposable"/>.
 /// </summary>
 public class VatSysForm : BaseForm
 {
@@ -20,6 +22,9 @@ public class VatSysForm : BaseForm
     // BaseForm draws the grip 11px tall, 12px above the bottom of the client area.
     const int SizeGripHeight = 12;
 
+    readonly FrameworkElement _view;
+    readonly IErrorReporter _errorReporter;
+
     bool ForceClosing { get; set; }
 
     public IWindowHandle WindowHandle { get; }
@@ -27,6 +32,7 @@ public class VatSysForm : BaseForm
     public VatSysForm(
         string title,
         Func<IWindowHandle, FrameworkElement> createView,
+        IErrorReporter errorReporter,
         bool sizeToContent,
         bool canClose = true,
         bool canMinimise = true,
@@ -38,8 +44,9 @@ public class VatSysForm : BaseForm
         HasMinimizeButton = canMinimise;
         MiddleClickClose = middleClickToClose;
 
+        _errorReporter = errorReporter;
         WindowHandle = new WindowHandle(this);
-        var view = createView(WindowHandle);
+        _view = createView(WindowHandle);
 
         var elementHost = new ElementHost
         {
@@ -51,19 +58,19 @@ public class VatSysForm : BaseForm
             // A Canvas measures its child with no size limit. The view then always has its natural size,
             // and SizeChanged occurs each time the content changes size.
             var canvas = new Canvas();
-            canvas.Children.Add(view);
+            canvas.Children.Add(_view);
             elementHost.Child = canvas;
 
-            view.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            ResizeToContent(view.DesiredSize);
-            view.SizeChanged += (_, e) => ResizeToContent(e.NewSize);
+            _view.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            ResizeToContent(_view.DesiredSize);
+            _view.SizeChanged += (_, e) => ResizeToContent(e.NewSize);
 
             FormBorderStyle = FormBorderStyle.FixedSingle;
             Padding = new Padding(0);
         }
         else
         {
-            elementHost.Child = view;
+            elementHost.Child = _view;
 
             FormBorderStyle = FormBorderStyle.Sizable;
             Resizeable = true;
@@ -118,5 +125,11 @@ public class VatSysForm : BaseForm
         {
             e.Cancel = false;
         }
+    }
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        base.OnFormClosed(e);
+        ViewModelDisposer.Dispose(_view, _errorReporter);
     }
 }
