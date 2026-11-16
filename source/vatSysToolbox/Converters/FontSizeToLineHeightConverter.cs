@@ -6,7 +6,7 @@ public class FontSizeToLineHeightConverter : IValueConverter
 {
     const double ScaleFactor = 0.875;
 
-    public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         if (value is null)
             throw new NotSupportedException();
@@ -14,7 +14,7 @@ public class FontSizeToLineHeightConverter : IValueConverter
         return double.Parse(value.ToString()) * ScaleFactor;
     }
 
-    public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+    public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         throw new NotImplementedException();
     }

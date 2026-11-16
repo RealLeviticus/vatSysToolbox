@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Microsoft.Win32;
 
@@ -18,17 +19,16 @@ public static class DpiAwareness
         const string dpiValue = "DPIUNAWARE";
 
         using var key = Registry.CurrentUser.OpenSubKey(registryPath, writable: false);
-        var existingValue = key?.GetValue(vatSysExecutablePath) as string;
 
         // If already set, exit early
-        if (existingValue != null && existingValue.Contains(dpiValue))
+        if (key?.GetValue(vatSysExecutablePath) is string existingValue && existingValue.Contains(dpiValue))
             return;
 
         // Set the registry key
         using var writableKey = Registry.CurrentUser.OpenSubKey(registryPath, writable: true)
-            ?? Registry.CurrentUser.CreateSubKey(registryPath);
+                                ?? Registry.CurrentUser.CreateSubKey(registryPath);
 
-        writableKey.SetValue(vatSysExecutablePath, dpiValue, RegistryValueKind.String);
+        writableKey!.SetValue(vatSysExecutablePath, dpiValue, RegistryValueKind.String);
 
         // Restart vatSys to apply the DPI setting
         RestartVatSys();
@@ -43,14 +43,14 @@ public static class DpiAwareness
         Environment.Exit(0);
     }
 
-    static bool TryGetVatSysInstallationPath(out string? installationPath)
+    static bool TryGetVatSysInstallationPath([NotNullWhen(true)] out string? installationPath)
     {
         using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Sawbe\vatSys");
         installationPath = key?.GetValue("Path") as string;
         return !string.IsNullOrEmpty(installationPath) && Directory.Exists(installationPath);
     }
 
-    static bool TryGetVatSysExecutablePath(out string? executablePath)
+    static bool TryGetVatSysExecutablePath([NotNullWhen(true)] out string? executablePath)
     {
         try
         {
