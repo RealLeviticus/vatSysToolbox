@@ -12,12 +12,23 @@ public interface IMessageTransport
     IMailbox OpenMailbox(string mailboxName);
 
     /// <summary>
-    /// Adds the envelope to the inbound queue of <see cref="Envelope.Recipient"/>. If the recipient did not open its
+    /// Adds the envelope to the inbound queue of <paramref name="recipient"/>. If the recipient did not open its
     /// queue yet, the envelope stays in the queue until the recipient opens it.
-    /// If <see cref="Envelope.Recipient"/> is <c>null</c>, adds the envelope to the queue of each plugin that has an
-    /// open queue, except the sender.
     /// </summary>
-    Task Send(Envelope envelope, CancellationToken cancellationToken);
+    /// <param name="recipient">The mailbox name of the plugin that receives the envelope.</param>
+    void Send(string recipient, Envelope envelope);
+
+    /// <inheritdoc cref="Send"/>
+    Task SendAsync(string recipient, Envelope envelope, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Adds the envelope to the inbound queue of each plugin that has an open queue, except
+    /// <see cref="Envelope.Sender"/>.
+    /// </summary>
+    void Broadcast(Envelope envelope);
+
+    /// <inheritdoc cref="Broadcast"/>
+    Task BroadcastAsync(Envelope envelope, CancellationToken cancellationToken);
 }
 
 /// <summary>

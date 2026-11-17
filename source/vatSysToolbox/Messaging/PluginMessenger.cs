@@ -20,60 +20,64 @@ public interface IPluginMessenger
     void Start();
 
     /// <summary>
-    /// Sends a message to one plugin. This method does not wait for the message to go into the inbound queue of the
-    /// recipient. If the message cannot be sent, the messenger reports the error.
+    /// Sends a message to a plugin. This method does not wait for the recipient to handle the message.
     /// </summary>
-    void Send(string recipient, string type, MessageContent content);
+    /// <param name="content">The data of the message. If <c>null</c>, the message has no data.</param>
+    void Send(string recipient, string type, MessageContent? content = null);
 
     /// <summary>
-    /// Sends a message to one plugin. The task completes when the message is in the inbound queue of the recipient.
+    /// Sends a message to a plugin. The task completes when the message is in the inbound queue of the recipient.
     /// </summary>
-    Task SendAsync(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default);
+    /// <param name="content">The data of the message. If <c>null</c>, the message has no data.</param>
+    Task SendAsync(string recipient, string type, MessageContent? content = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends a message to all the other plugins that have a messenger. This method does not wait for the message to go
-    /// into the inbound queues of the recipients. If the message cannot be sent, the messenger reports the error.
+    /// Sends a message to all the other plugins that have a messenger. This method does not wait for the recipients to
+    /// handle the message.
     /// </summary>
-    void Broadcast(string type, MessageContent content);
+    /// <param name="content">The data of the message. If <c>null</c>, the message has no data.</param>
+    void Broadcast(string type, MessageContent? content = null);
 
     /// <summary>
     /// Sends a message to all the other plugins that have a messenger.
     /// The task completes when the message is in the inbound queue of each recipient.
     /// </summary>
-    Task BroadcastAsync(string type, MessageContent content, CancellationToken cancellationToken = default);
+    /// <param name="content">The data of the message. If <c>null</c>, the message has no data.</param>
+    Task BroadcastAsync(string type, MessageContent? content = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sends a request to one plugin, and waits for the reply.
     /// You must call <see cref="Start"/> before the reply can be received.
     /// </summary>
     /// <exception cref="MessagingException">The recipient could not handle the request.</exception>
-    Task<PluginMessage> RequestAsync(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default);
+    /// <param name="content">The data of the message. If <c>null</c>, the message has no data.</param>
+    Task<PluginMessage> RequestAsync(string recipient, string type, MessageContent? content = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Adds a handler for the messages of one type. A type can have more than one handler.
-    /// Dispose the return value to remove the handler.
+    /// Adds a handler for the messages of a specified <paramref name="type"/>. A message can have more than one handler.
+    /// Dispose the return value to unsubscribe.
     /// </summary>
     IDisposable Subscribe(string type, Func<PluginMessage, CancellationToken, Task> handler);
 
     /// <summary>
-    /// Adds a synchronous handler for the messages of one type. A type can have more than one handler.
-    /// Dispose the return value to remove the handler.
+    /// Adds a synchronous handler for the messages of a specified <paramref name="type"/>. A type can have more than one handler.
+    /// Dispose the return value to unsubscribe.
     /// </summary>
     IDisposable Subscribe(string type, Action<PluginMessage> handler);
 
     /// <summary>
-    /// Adds a synchronous handler for the messages of one type. Use this overload if the handler does not use the
+    /// Adds a synchronous handler for the messages of a specified <paramref name="type"/>. Use this overload if the handler does not use the
     /// content of the message. A type can have more than one handler.
-    /// Dispose the return value to remove the handler.
+    /// Dispose the return value to unsubscribe.
     /// </summary>
     IDisposable Subscribe(string type, Action handler);
 
     /// <summary>
-    /// Adds the handler for the requests of one type. A type can have only one request handler.
-    /// Dispose the return value to remove the handler.
+    /// Adds the handler for the requests of a specified <paramref name="type"/>. A type can have only one request handler.
+    /// Dispose the return value to unsubscribe.
     /// </summary>
     /// <exception cref="InvalidOperationException">The type already has a request handler.</exception>
-    IDisposable HandleRequests(string type, Func<PluginMessage, CancellationToken, Task<MessageContent>> handler);
+    IDisposable Handle(string type, Func<PluginMessage, CancellationToken, Task<MessageContent>> handler);
 }
 
 /// <summary>
@@ -121,43 +125,47 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         _receiver.Start();
     }
 
-    public void Send(string recipient, string type, MessageContent content)
+    public void Send(string recipient, string type, MessageContent? content = null)
     {
-        _ = SendWithoutWaiting(CreateEnvelope(EnvelopeKind.Message, recipient, type, content));
+        var envelope = CreateEnvelope(EnvelopeKind.Message, type, content);
+        _transport.Send(recipient, envelope);
     }
 
-    public Task SendAsync(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default)
+    public Task SendAsync(string recipient, string type, MessageContent? content = null, CancellationToken cancellationToken = default)
     {
-        return _transport.Send(CreateEnvelope(EnvelopeKind.Message, recipient, type, content), cancellationToken);
+        var envelope = CreateEnvelope(EnvelopeKind.Message, type, content);
+        return _transport.SendAsync(recipient, envelope, cancellationToken);
     }
 
-    public void Broadcast(string type, MessageContent content)
+    public void Broadcast(string type, MessageContent? content = null)
     {
-        _ = SendWithoutWaiting(CreateEnvelope(EnvelopeKind.Message, null, type, content));
+        var envelope = CreateEnvelope(EnvelopeKind.Broadcast, type, content);
+        _transport.Broadcast(envelope);
     }
 
-    public Task BroadcastAsync(string type, MessageContent content, CancellationToken cancellationToken = default)
+    public Task BroadcastAsync(string type, MessageContent? content = null, CancellationToken cancellationToken = default)
     {
-        return _transport.Send(CreateEnvelope(EnvelopeKind.Message, null, type, content), cancellationToken);
+        var envelope = CreateEnvelope(EnvelopeKind.Broadcast, type, content);
+        return _transport.BroadcastAsync(envelope, cancellationToken);
     }
 
-    public async Task<PluginMessage> RequestAsync(string recipient, string type, MessageContent content, CancellationToken cancellationToken = default)
+    public async Task<PluginMessage> RequestAsync(string recipient, string type, MessageContent? content = null, CancellationToken cancellationToken = default)
     {
-        var request = CreateEnvelope(EnvelopeKind.Request, recipient, type, content);
+        var envelope = CreateEnvelope(EnvelopeKind.Request, type, content);
         var reply = new TaskCompletionSource<PluginMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _pendingRequests[request.Id] = reply;
+        _pendingRequests[envelope.Id] = reply;
 
         try
         {
             using (cancellationToken.Register(() => reply.TrySetCanceled(cancellationToken)))
             {
-                await _transport.Send(request, cancellationToken).ConfigureAwait(false);
+                await _transport.SendAsync(recipient, envelope, cancellationToken).ConfigureAwait(false);
                 return await reply.Task.ConfigureAwait(false);
             }
         }
         finally
         {
-            _pendingRequests.TryRemove(request.Id, out _);
+            _pendingRequests.TryRemove(envelope.Id, out _);
         }
     }
 
@@ -167,7 +175,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         {
             if (!_messageHandlers.TryGetValue(type, out var handlers))
             {
-                handlers = new List<Func<PluginMessage, CancellationToken, Task>>();
+                handlers = [];
                 _messageHandlers[type] = handlers;
             }
 
@@ -179,11 +187,15 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
             lock (_gate)
             {
                 if (!_messageHandlers.TryGetValue(type, out var handlers))
+                {
                     return;
+                }
 
                 handlers.Remove(handler);
                 if (handlers.Count == 0)
+                {
                     _messageHandlers.Remove(type);
+                }
             }
         });
     }
@@ -202,12 +214,14 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         return Subscribe(type, _ => handler());
     }
 
-    public IDisposable HandleRequests(string type, Func<PluginMessage, CancellationToken, Task<MessageContent>> handler)
+    public IDisposable Handle(string type, Func<PluginMessage, CancellationToken, Task<MessageContent>> handler)
     {
         lock (_gate)
         {
             if (_requestHandlers.ContainsKey(type))
+            {
                 throw new InvalidOperationException($"The request type {type} already has a handler.");
+            }
 
             _requestHandlers[type] = handler;
         }
@@ -227,7 +241,9 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         _mailbox.Dispose();
 
         foreach (var pendingRequest in _pendingRequests.Values)
+        {
             pendingRequest.TrySetCanceled();
+        }
     }
 
     async Task Receive(CancellationToken cancellationToken)
@@ -240,6 +256,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
                 switch (envelope.Kind)
                 {
                     case EnvelopeKind.Message:
+                    case EnvelopeKind.Broadcast:
                         await HandleMessage(envelope, cancellationToken).ConfigureAwait(false);
                         break;
 
@@ -250,6 +267,9 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
                     case EnvelopeKind.Reply:
                         HandleReply(envelope);
                         break;
+                    
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -276,7 +296,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
 
         if (handlers.Length == 0)
         {
-            if (envelope.Recipient is null)
+            if (envelope.Kind == EnvelopeKind.Broadcast)
             {
                 _logger.LogDebug("No handler for the broadcast message {Type} from {Sender}", envelope.Type, envelope.Sender);
                 return;
@@ -324,7 +344,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
 
         try
         {
-            await _transport.Send(reply, CancellationToken.None).ConfigureAwait(false);
+            await _transport.SendAsync(request.Sender, reply, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -332,23 +352,11 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         }
     }
 
-    async Task SendWithoutWaiting(Envelope envelope)
-    {
-        try
-        {
-            await _transport.Send(envelope, CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _errorReporter.ReportError(ex, $"Could not send the message {envelope.Type}");
-        }
-    }
-
     void HandleReply(Envelope reply)
     {
         if (reply.CorrelationId is null || !_pendingRequests.TryRemove(reply.CorrelationId, out var pendingRequest))
         {
-            // The request was cancelled before the reply was received
+            // The request was canceled before the reply was received
             _logger.LogDebug("No pending request for the reply {Type} from {Sender}", reply.Type, reply.Sender);
             return;
         }
@@ -362,16 +370,15 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         pendingRequest.TrySetResult(ToPluginMessage(reply));
     }
 
-    Envelope CreateEnvelope(EnvelopeKind kind, string? recipient, string type, MessageContent content)
+    Envelope CreateEnvelope(EnvelopeKind kind, string type, MessageContent? content)
     {
         return new Envelope(
             Guid.NewGuid().ToString("N"),
             kind,
             MailboxName,
-            recipient,
             type,
-            content.ContentType,
-            content.Payload);
+            content?.ContentType ?? string.Empty,
+            content?.Payload ?? []);
     }
 
     Envelope CreateReply(Envelope request, string contentType, byte[] payload, string? error)
@@ -380,7 +387,6 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
             Guid.NewGuid().ToString("N"),
             EnvelopeKind.Reply,
             MailboxName,
-            request.Sender,
             request.Type,
             contentType,
             payload,

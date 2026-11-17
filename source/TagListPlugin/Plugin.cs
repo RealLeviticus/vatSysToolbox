@@ -35,9 +35,6 @@ public class Plugin : IPlugin
     const string WindowKey = "TagList";
     const string WindowTitle = "Tag List";
 
-    // The messages that the plugin sends have no data
-    static readonly MessageContent EmptyContent = new("application/json", [.. "{}"u8]);
-
     readonly IGuiInvoker _guiInvoker;
     readonly IErrorReporter _errorReporter;
     readonly IPluginMessenger _messenger;
@@ -192,7 +189,7 @@ public class Plugin : IPlugin
     {
         try
         {
-            _messenger.Broadcast(messageType, EmptyContent);
+            _messenger.Broadcast(messageType);
         }
         catch (Exception ex)
         {

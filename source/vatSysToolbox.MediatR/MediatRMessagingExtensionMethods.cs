@@ -47,7 +47,7 @@ public static class MediatRMessagingExtensionMethods
         IMessageSerializer serializer)
         where TRequest : IRequest<TResponse>
     {
-        return messenger.HandleRequests(type, async (message, cancellationToken) =>
+        return messenger.Handle(type, async (message, cancellationToken) =>
         {
             var response = await mediator
                 .Send(message.Deserialize<TRequest>(serializer), cancellationToken)

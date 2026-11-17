@@ -3,8 +3,7 @@ using System.Text.Json;
 namespace vatSysToolbox.Messaging;
 
 /// <summary>
-/// Converts message data to bytes, and bytes to message data, for one format.
-/// To use a different format (for example, MessagePack), make a class that implements this interface.
+/// Converts message data to bytes, and bytes to message data.
 /// </summary>
 public interface IMessageSerializer
 {

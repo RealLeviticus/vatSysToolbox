@@ -163,7 +163,9 @@ workQueue.Enqueue(async () => await UpdateSequence());
 - `SendAsync` sends a message to one plugin.
 - `BroadcastAsync` sends a message to all the other plugins.
 - `RequestAsync` sends a request to one plugin, and waits for the reply.
-- `Send` and `Broadcast` send a message, but do not wait for the message to go into the queue. If the message cannot be sent, the messenger reports the error.
+- `Send` and `Broadcast` send a message, but do not wait for the recipient to handle it. If the message cannot be sent, they throw an exception.
+
+The content of a message is optional. If you do not give content, the message has an empty payload and an empty content type.
 
 Each plugin has an inbound queue. If the recipient is not ready, the message stays in its queue until the recipient calls `Start`. Add your handlers before you call `Start`.
 
@@ -176,7 +178,7 @@ messenger.Subscribe("dev.example.my-plugin.sequence-updated", (message, cancella
     return Task.CompletedTask;
 });
 
-messenger.HandleRequests("dev.example.my-plugin.get-sequence", (request, cancellationToken) =>
+messenger.Handle("dev.example.my-plugin.get-sequence", (request, cancellationToken) =>
     Task.FromResult(json.ToContent(GetSequence())));
 
 messenger.Start();
@@ -194,6 +196,60 @@ var sequence = message.Deserialize<Sequence>(json, messagePack);
 ```
 
 If a plugin receives a direct message or a request that it has no handler for, it shows an error in the vatSys error window. The requester receives a `MessagingException`.
+
+#### Messages inside a plugin
+
+Use `IPluginMessenger` only for messages that go to other plugins, or come from other plugins.
+For messages between the components in your plugin (for example, from a view model to the plugin class), use a different messenger.
+
+```mermaid
+flowchart LR
+    subgraph vatSys["vatSys process"]
+        subgraph MyPlugin["My plugin"]
+            ViewModel["View model"]
+            Service["Service"]
+            PluginClass["Plugin class"]
+            Internal{{"Internal messenger"}}
+            Messenger{{"IPluginMessenger"}}
+
+            ViewModel <--> Internal
+            Service <--> Internal
+            PluginClass <--> Internal
+            PluginClass <--> Messenger
+        end
+
+        Transport(["Message transport"])
+        OtherPlugin["Other plugin"]
+
+        Messenger <--> Transport
+        Transport <--> OtherPlugin
+    end
+```
+
+The two kinds of messages have different properties:
+
+| | `IPluginMessenger` | Internal messenger |
+|---|---|---|
+| Recipients | Other plugins | Components in the same plugin |
+| Data | Bytes, with a content type. You must serialize the data. | .NET objects. |
+| Delivery | The message goes into a queue. A background thread handles it later. | The messenger usually calls the handlers immediately, on the same thread. |
+| Contract | The message type and the payload are a public contract. Other plugins can depend on them. | You can change the messages at any time. |
+
+The toolbox does not contain an internal messenger. Use the messenger that you prefer. We recommend `WeakReferenceMessenger` from the [CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm/messenger) package. You can also use MediatR notifications, or .NET events.
+
+```csharp
+// A message inside the plugin
+public record WindowOpenedMessage;
+
+// The view model sends the message
+WeakReferenceMessenger.Default.Send(new WindowOpenedMessage());
+
+// The plugin class receives the message, and tells the other plugins
+WeakReferenceMessenger.Default.Register<Plugin, WindowOpenedMessage>(this, (plugin, _) =>
+    plugin._messenger.Broadcast("dev.example.my-plugin.window-opened"));
+```
+
+The [Tag List plugin](source/TagListPlugin) uses this pattern.
 
 #### MediatR
 

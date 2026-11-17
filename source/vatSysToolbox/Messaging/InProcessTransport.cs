@@ -1,8 +1,5 @@
 using System.Collections.Concurrent;
 using SharedEnvelope = System.Collections.Generic.IDictionary<string, object>;
-using SharedMailbox = System.Tuple<
-    System.Collections.Concurrent.ConcurrentQueue<System.Collections.Generic.IDictionary<string, object>>,
-    System.Threading.SemaphoreSlim>;
 
 namespace vatSysToolbox.Messaging;
 
@@ -23,6 +20,10 @@ namespace vatSysToolbox.Messaging;
 /// </remarks>
 public class InProcessTransport : IMessageTransport
 {
+    record struct SharedMailbox(
+        ConcurrentQueue<SharedEnvelope> Queue,
+        SemaphoreSlim SemaphoreSlim);
+    
     // Value: ConcurrentDictionary<string, SharedMailbox>. The key is the mailbox name.
     const string MailboxesSlotName = "vatSysToolbox.Messaging.InProcess.v1.Mailboxes";
 
@@ -33,7 +34,6 @@ public class InProcessTransport : IMessageTransport
     const string IdKey = "Id";
     const string KindKey = "Kind";
     const string SenderKey = "Sender";
-    const string RecipientKey = "Recipient";
     const string TypeKey = "Type";
     const string ContentTypeKey = "ContentType";
     const string PayloadKey = "Payload";
@@ -46,40 +46,54 @@ public class InProcessTransport : IMessageTransport
     public IMailbox OpenMailbox(string mailboxName)
     {
         if (!_openMailboxes.TryAdd(mailboxName, true))
-            throw new MessagingException($"The mailbox {mailboxName} is already open.");
-
-        return new Mailbox(mailboxName, GetOrCreateMailbox(mailboxName), () => _openMailboxes.TryRemove(mailboxName, out _));
-    }
-
-    public Task Send(Envelope envelope, CancellationToken cancellationToken)
-    {
-        if (envelope.Recipient is not null)
         {
-            Enqueue(envelope.Recipient, envelope);
-            return Task.CompletedTask;
+            throw new MessagingException($"The mailbox {mailboxName} is already open.");
         }
 
+        return new Mailbox(
+            mailboxName,
+            GetOrCreateMailbox(mailboxName),
+            () => _openMailboxes.TryRemove(mailboxName, out _));
+    }
+
+    public void Send(string recipient, Envelope envelope)
+    {
+        Enqueue(recipient, envelope);
+    }
+
+    public Task SendAsync(string recipient, Envelope envelope, CancellationToken cancellationToken)
+    {
+        Send(recipient, envelope);
+        return Task.CompletedTask;
+    }
+
+    public void Broadcast(Envelope envelope)
+    {
         foreach (var mailboxName in _openMailboxes.Keys)
         {
             if (mailboxName != envelope.Sender)
                 Enqueue(mailboxName, envelope);
         }
+    }
 
+    public Task BroadcastAsync(Envelope envelope, CancellationToken cancellationToken)
+    {
+        Broadcast(envelope);
         return Task.CompletedTask;
     }
 
     void Enqueue(string mailboxName, Envelope envelope)
     {
         var mailbox = GetOrCreateMailbox(mailboxName);
-        mailbox.Item1.Enqueue(ToSharedEnvelope(envelope));
-        mailbox.Item2.Release();
+        mailbox.Queue.Enqueue(ToSharedEnvelope(envelope));
+        mailbox.SemaphoreSlim.Release();
     }
 
     SharedMailbox GetOrCreateMailbox(string mailboxName)
     {
         return _mailboxes.GetOrAdd(
             mailboxName,
-            _ => Tuple.Create(new ConcurrentQueue<SharedEnvelope>(), new SemaphoreSlim(0)));
+            _ => new SharedMailbox(new ConcurrentQueue<SharedEnvelope>(), new SemaphoreSlim(0)));
     }
 
     static T GetOrCreateSlot<T>(string slotName) where T : class, new()
@@ -114,9 +128,6 @@ public class InProcessTransport : IMessageTransport
             [PayloadKey] = envelope.Payload.ToArray()
         };
 
-        if (envelope.Recipient is not null)
-            sharedEnvelope[RecipientKey] = envelope.Recipient;
-
         if (envelope.CorrelationId is not null)
             sharedEnvelope[CorrelationIdKey] = envelope.CorrelationId;
 
@@ -130,13 +141,14 @@ public class InProcessTransport : IMessageTransport
     {
         var kindName = GetRequiredValue<string>(sharedEnvelope, KindKey);
         if (!Enum.TryParse<EnvelopeKind>(kindName, out var kind))
+        {
             throw new MessagingException($"The envelope kind {kindName} is not known.");
+        }
 
         return new Envelope(
             GetRequiredValue<string>(sharedEnvelope, IdKey),
             kind,
             GetRequiredValue<string>(sharedEnvelope, SenderKey),
-            GetOptionalValue<string>(sharedEnvelope, RecipientKey),
             GetRequiredValue<string>(sharedEnvelope, TypeKey),
             GetRequiredValue<string>(sharedEnvelope, ContentTypeKey),
             GetRequiredValue<byte[]>(sharedEnvelope, PayloadKey),
@@ -168,9 +180,11 @@ public class InProcessTransport : IMessageTransport
         public async Task<Envelope> Receive(CancellationToken cancellationToken)
         {
             // The semaphore count is the same as the number of envelopes in the queue.
-            await sharedMailbox.Item2.WaitAsync(cancellationToken).ConfigureAwait(false);
-            if (!sharedMailbox.Item1.TryDequeue(out var sharedEnvelope))
+            await sharedMailbox.SemaphoreSlim.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (!sharedMailbox.Queue.TryDequeue(out var sharedEnvelope))
+            {
                 throw new MessagingException($"The mailbox {mailboxName} is empty.");
+            }
 
             return ToEnvelope(sharedEnvelope);
         }
