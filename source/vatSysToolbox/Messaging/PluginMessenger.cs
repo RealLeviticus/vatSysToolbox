@@ -9,11 +9,6 @@ namespace vatSysToolbox.Messaging;
 public interface IPluginMessenger
 {
     /// <summary>
-    /// The name that other plugins use to send messages to this plugin.
-    /// </summary>
-    string MailboxName { get; }
-
-    /// <summary>
     /// Starts to receive the messages from the inbound queue. Messages that other plugins send before this call stay
     /// in the queue. Add the handlers before you call this method.
     /// </summary>
@@ -96,6 +91,7 @@ public interface IPluginMessenger
 /// </remarks>
 public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
 {
+    readonly string _mailboxName;
     readonly IMessageTransport _transport;
     readonly IErrorReporter _errorReporter;
     readonly ILogger<PluginMessenger> _logger;
@@ -110,15 +106,13 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
     /// <exception cref="MessagingException">A different plugin uses the same mailbox name.</exception>
     public PluginMessenger(string mailboxName, IMessageTransport transport, IErrorReporter errorReporter, ILogger<PluginMessenger> logger)
     {
-        MailboxName = mailboxName;
+        _mailboxName = mailboxName;
         _transport = transport;
         _errorReporter = errorReporter;
         _logger = logger;
         _mailbox = transport.OpenMailbox(mailboxName);
         _receiver = new BackgroundTask(Receive);
     }
-
-    public string MailboxName { get; }
 
     public void Start()
     {
@@ -302,7 +296,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
                 return;
             }
 
-            throw new MessagingException($"{MailboxName} has no handler for the message {envelope.Type} from {envelope.Sender}.");
+            throw new MessagingException($"{_mailboxName} has no handler for the message {envelope.Type} from {envelope.Sender}.");
         }
 
         var message = ToPluginMessage(envelope);
@@ -331,7 +325,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
             }
 
             if (handler is null)
-                throw new MessagingException($"{MailboxName} has no handler for the request {request.Type} from {request.Sender}.");
+                throw new MessagingException($"{_mailboxName} has no handler for the request {request.Type} from {request.Sender}.");
 
             var content = await handler(ToPluginMessage(request), cancellationToken).ConfigureAwait(false);
             reply = CreateReply(request, content.ContentType, content.Payload, error: null);
@@ -375,7 +369,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         return new Envelope(
             Guid.NewGuid().ToString("N"),
             kind,
-            MailboxName,
+            _mailboxName,
             type,
             content?.ContentType ?? string.Empty,
             content?.Payload ?? []);
@@ -386,7 +380,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         return new Envelope(
             Guid.NewGuid().ToString("N"),
             EnvelopeKind.Reply,
-            MailboxName,
+            _mailboxName,
             request.Type,
             contentType,
             payload,
