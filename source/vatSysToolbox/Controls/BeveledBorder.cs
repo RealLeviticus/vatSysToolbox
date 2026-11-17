@@ -4,8 +4,14 @@ using System.Windows.Media;
 
 namespace vatSysToolbox.Controls;
 
+/// <summary>
+/// A border with beveled (3D) edges, the same as the borders of the vatSys controls.
+/// </summary>
 public class BeveledBorder : Decorator
 {
+    /// <summary>
+    /// Identifies the <see cref="BorderThickness"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty BorderThicknessProperty =
         DependencyProperty.Register(
             nameof(BorderThickness),
@@ -15,6 +21,9 @@ public class BeveledBorder : Decorator
                 new Thickness(0),
                 FrameworkPropertyMetadataOptions.AffectsRender | FrameworkPropertyMetadataOptions.AffectsMeasure));
 
+    /// <summary>
+    /// Identifies the <see cref="BevelType"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty BevelTypeProperty =
         DependencyProperty.Register(
             nameof(BevelType),
@@ -24,12 +33,18 @@ public class BeveledBorder : Decorator
                 BevelType.Raised,
                 FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>
+    /// The width of the bevel on each edge.
+    /// </summary>
     public Thickness BorderThickness
     {
         get => (Thickness)GetValue(BorderThicknessProperty);
         set => SetValue(BorderThicknessProperty, value);
     }
 
+    /// <summary>
+    /// How the edge looks. The default is <see cref="Controls.BevelType.Raised"/>.
+    /// </summary>
     public BevelType BevelType
     {
         get => (BevelType)GetValue(BevelTypeProperty);
@@ -37,8 +52,7 @@ public class BeveledBorder : Decorator
     }
 
     Thickness BorderThicknessDoubled =>
-        new Thickness(BorderThickness.Left * 2, BorderThickness.Top * 2, BorderThickness.Right * 2,
-            BorderThickness.Bottom * 2);
+        new(BorderThickness.Left * 2, BorderThickness.Top * 2, BorderThickness.Right * 2, BorderThickness.Bottom * 2);
 
     protected override Size MeasureOverride(Size constraint)
     {

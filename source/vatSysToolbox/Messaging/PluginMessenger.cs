@@ -17,19 +17,25 @@ public interface IPluginMessenger
     /// <summary>
     /// Sends a message to a plugin. This method does not wait for the recipient to handle the message.
     /// </summary>
+    /// <param name="recipient">The mailbox name of the plugin that receives the message.</param>
+    /// <param name="type">The type of the message (for example, <c>dev.example.my-plugin.thing-changed</c>).</param>
     /// <param name="content">The data of the message. If <c>null</c>, the message has no data.</param>
     void Send(string recipient, string type, MessageContent? content = null);
 
     /// <summary>
     /// Sends a message to a plugin. The task completes when the message is in the inbound queue of the recipient.
     /// </summary>
+    /// <param name="recipient">The mailbox name of the plugin that receives the message.</param>
+    /// <param name="type">The type of the message (for example, <c>dev.example.my-plugin.thing-changed</c>).</param>
     /// <param name="content">The data of the message. If <c>null</c>, the message has no data.</param>
+    /// <param name="cancellationToken">Cancels the send operation.</param>
     Task SendAsync(string recipient, string type, MessageContent? content = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sends a message to all the other plugins that have a messenger. This method does not wait for the recipients to
     /// handle the message.
     /// </summary>
+    /// <param name="type">The type of the message (for example, <c>dev.example.my-plugin.thing-changed</c>).</param>
     /// <param name="content">The data of the message. If <c>null</c>, the message has no data.</param>
     void Broadcast(string type, MessageContent? content = null);
 
@@ -37,7 +43,9 @@ public interface IPluginMessenger
     /// Sends a message to all the other plugins that have a messenger.
     /// The task completes when the message is in the inbound queue of each recipient.
     /// </summary>
+    /// <param name="type">The type of the message (for example, <c>dev.example.my-plugin.thing-changed</c>).</param>
     /// <param name="content">The data of the message. If <c>null</c>, the message has no data.</param>
+    /// <param name="cancellationToken">Cancels the broadcast operation.</param>
     Task BroadcastAsync(string type, MessageContent? content = null, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -45,19 +53,27 @@ public interface IPluginMessenger
     /// You must call <see cref="Start"/> before the reply can be received.
     /// </summary>
     /// <exception cref="MessagingException">The recipient could not handle the request.</exception>
-    /// <param name="content">The data of the message. If <c>null</c>, the message has no data.</param>
+    /// <param name="recipient">The mailbox name of the plugin that receives the request.</param>
+    /// <param name="type">The type of the request (for example, <c>dev.example.my-plugin.get-thing</c>).</param>
+    /// <param name="content">The data of the request. If <c>null</c>, the request has no data.</param>
+    /// <param name="cancellationToken">Stops the wait for the reply.</param>
+    /// <returns>The reply.</returns>
     Task<PluginMessage> RequestAsync(string recipient, string type, MessageContent? content = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a handler for the messages of a specified <paramref name="type"/>. A message can have more than one handler.
     /// Dispose the return value to unsubscribe.
     /// </summary>
+    /// <param name="type">The type of the message (for example, <c>dev.example.my-plugin.thing-changed</c>).</param>
+    /// <param name="handler">Handles the message. The cancellation token is canceled when the messenger is disposed.</param>
     IDisposable Subscribe(string type, Func<PluginMessage, CancellationToken, Task> handler);
 
     /// <summary>
     /// Adds a synchronous handler for the messages of a specified <paramref name="type"/>. A type can have more than one handler.
     /// Dispose the return value to unsubscribe.
     /// </summary>
+    /// <param name="type">The type of the message (for example, <c>dev.example.my-plugin.thing-changed</c>).</param>
+    /// <param name="handler">Handles the message.</param>
     IDisposable Subscribe(string type, Action<PluginMessage> handler);
 
     /// <summary>
@@ -65,6 +81,8 @@ public interface IPluginMessenger
     /// content of the message. A type can have more than one handler.
     /// Dispose the return value to unsubscribe.
     /// </summary>
+    /// <param name="type">The type of the message (for example, <c>dev.example.my-plugin.thing-changed</c>).</param>
+    /// <param name="handler">Handles the message.</param>
     IDisposable Subscribe(string type, Action handler);
 
     /// <summary>
@@ -72,6 +90,11 @@ public interface IPluginMessenger
     /// Dispose the return value to unsubscribe.
     /// </summary>
     /// <exception cref="InvalidOperationException">The type already has a request handler.</exception>
+    /// <param name="type">The type of the request (for example, <c>dev.example.my-plugin.get-thing</c>).</param>
+    /// <param name="handler">
+    /// Handles the request, and gives the content of the reply. If the handler throws an exception, the requester
+    /// receives the error. The cancellation token is canceled when the messenger is disposed.
+    /// </param>
     IDisposable Handle(string type, Func<PluginMessage, CancellationToken, Task<MessageContent>> handler);
 }
 
@@ -103,6 +126,12 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
     readonly Dictionary<string, Func<PluginMessage, CancellationToken, Task<MessageContent>>> _requestHandlers = new();
     readonly ConcurrentDictionary<string, TaskCompletionSource<PluginMessage>> _pendingRequests = new();
 
+    /// <param name="mailboxName">
+    /// The name of the inbound queue of this plugin. Other plugins use this name to send messages to this plugin.
+    /// </param>
+    /// <param name="transport">Moves the messages between the plugins.</param>
+    /// <param name="errorReporter">Reports the errors that occur when the messenger receives or handles a message.</param>
+    /// <param name="logger">Logs the broadcasts that have no handler, and the replies that have no request.</param>
     /// <exception cref="MessagingException">A different plugin uses the same mailbox name.</exception>
     public PluginMessenger(string mailboxName, IMessageTransport transport, IErrorReporter errorReporter, ILogger<PluginMessenger> logger)
     {
@@ -114,35 +143,41 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         _receiver = new BackgroundTask(Receive);
     }
 
+    /// <inheritdoc/>
     public void Start()
     {
         _receiver.Start();
     }
 
+    /// <inheritdoc/>
     public void Send(string recipient, string type, MessageContent? content = null)
     {
         var envelope = CreateEnvelope(EnvelopeKind.Message, type, content);
         _transport.Send(recipient, envelope);
     }
 
+    /// <inheritdoc/>
     public Task SendAsync(string recipient, string type, MessageContent? content = null, CancellationToken cancellationToken = default)
     {
         var envelope = CreateEnvelope(EnvelopeKind.Message, type, content);
         return _transport.SendAsync(recipient, envelope, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public void Broadcast(string type, MessageContent? content = null)
     {
         var envelope = CreateEnvelope(EnvelopeKind.Broadcast, type, content);
         _transport.Broadcast(envelope);
     }
 
+    /// <inheritdoc/>
     public Task BroadcastAsync(string type, MessageContent? content = null, CancellationToken cancellationToken = default)
     {
         var envelope = CreateEnvelope(EnvelopeKind.Broadcast, type, content);
         return _transport.BroadcastAsync(envelope, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<PluginMessage> RequestAsync(string recipient, string type, MessageContent? content = null, CancellationToken cancellationToken = default)
     {
         var envelope = CreateEnvelope(EnvelopeKind.Request, type, content);
@@ -163,6 +198,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         }
     }
 
+    /// <inheritdoc/>
     public IDisposable Subscribe(string type, Func<PluginMessage, CancellationToken, Task> handler)
     {
         lock (_gate)
@@ -194,6 +230,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         });
     }
 
+    /// <inheritdoc/>
     public IDisposable Subscribe(string type, Action<PluginMessage> handler)
     {
         return Subscribe(type, (message, _) =>
@@ -203,11 +240,13 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         });
     }
 
+    /// <inheritdoc/>
     public IDisposable Subscribe(string type, Action handler)
     {
         return Subscribe(type, _ => handler());
     }
 
+    /// <inheritdoc/>
     public IDisposable Handle(string type, Func<PluginMessage, CancellationToken, Task<MessageContent>> handler)
     {
         lock (_gate)
@@ -229,6 +268,9 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         });
     }
 
+    /// <summary>
+    /// Stops the receipt of messages, and closes the inbound queue. The requests that wait for a reply are canceled.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _receiver.DisposeAsync().ConfigureAwait(false);

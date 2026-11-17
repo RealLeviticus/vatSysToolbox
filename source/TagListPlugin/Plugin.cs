@@ -49,7 +49,9 @@ public class Plugin : IPlugin
 
         var serviceProvider = new ServiceCollection()
             .AddLogging()
-            .AddVatSysToolbox(Name, MailboxName)
+            .AddErrorReporter(Name)
+            .AddWindowManager()
+            .AddPluginMessenger(MailboxName)
             .BuildServiceProvider();
 
         _guiInvoker = serviceProvider.GetRequiredService<IGuiInvoker>();

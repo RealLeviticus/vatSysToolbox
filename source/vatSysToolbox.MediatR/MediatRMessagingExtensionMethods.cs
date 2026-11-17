@@ -19,8 +19,10 @@ public static class MediatRMessagingExtensionMethods
     /// handlers of the notification receive it.
     /// Dispose the return value to stop.
     /// </summary>
+    /// <param name="messenger">The messenger that receives the messages.</param>
     /// <param name="type">The type of the message (for example, <c>dev.example.my-plugin.thing-changed</c>).</param>
     /// <param name="serializer">Converts the payload of the message to the notification.</param>
+    /// <param name="mediator">Publishes the notifications.</param>
     public static IDisposable PublishNotifications<TNotification>(
         this IPluginMessenger messenger,
         string type,
@@ -37,8 +39,10 @@ public static class MediatRMessagingExtensionMethods
     /// back to the plugin that made the request.
     /// Dispose the return value to stop.
     /// </summary>
+    /// <param name="messenger">The messenger that receives the requests.</param>
     /// <param name="type">The type of the request (for example, <c>dev.example.my-plugin.get-thing</c>).</param>
     /// <param name="serializer">Converts the payload to the request, and the response to a payload.</param>
+    /// <param name="mediator">Sends the requests to their handlers.</param>
     /// <exception cref="InvalidOperationException">The type already has a request handler.</exception>
     public static IDisposable SendRequests<TRequest, TResponse>(
         this IPluginMessenger messenger,
@@ -63,7 +67,10 @@ public static class MediatRMessagingExtensionMethods
     /// <see cref="SendRequests{TRequest,TResponse}"/>.
     /// Dispose the return value to stop.
     /// </summary>
+    /// <param name="messenger">The messenger that receives the messages.</param>
+    /// <param name="assembly">The assembly that contains the handlers.</param>
     /// <param name="serializer">Converts the payloads to the notifications and the requests, and the responses.</param>
+    /// <param name="mediator">Sends the notifications and the requests to their handlers.</param>
     /// <exception cref="InvalidOperationException">
     /// A handler with the attribute is not one notification handler or one request handler, or two request handlers
     /// have the same message type.

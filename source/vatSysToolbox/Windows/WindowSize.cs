@@ -18,9 +18,18 @@ public abstract record WindowSize
     /// <summary>
     /// The window opens with this size the first time, and with its last size after that. The user can change the size.
     /// </summary>
+    /// <param name="width">The width when the window opens the first time.</param>
+    /// <param name="height">The height when the window opens the first time.</param>
     public static WindowSize Absolute(double width, double height) => new AbsoluteSize(new Size(width, height));
 
+    /// <summary>
+    /// See <see cref="Content"/>.
+    /// </summary>
     public sealed record ContentSize : WindowSize;
 
+    /// <summary>
+    /// See <see cref="Absolute"/>.
+    /// </summary>
+    /// <param name="Size">The size of the window when it opens the first time.</param>
     public sealed record AbsoluteSize(Size Size) : WindowSize;
 }

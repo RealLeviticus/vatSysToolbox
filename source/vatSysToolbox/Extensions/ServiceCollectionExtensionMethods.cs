@@ -6,37 +6,12 @@ using vatSysToolbox.Windows;
 
 namespace vatSysToolbox.Extensions;
 
-/// <summary>
-/// Registers the toolbox services. These methods do not replace a service that is already registered.
-/// Thus, to use a different implementation, register it before you call these methods.
-/// </summary>
-/// <remarks>
-/// The services use <see cref="ILogger{TCategoryName}"/>. You must register the logging services
-/// (for example, with <c>AddLogging</c>).
-/// </remarks>
 public static class ServiceCollectionExtensionMethods
 {
     /// <summary>
-    /// Registers all the toolbox services.
-    /// </summary>
-    /// <param name="pluginName">The name that shows with the errors in the vatSys error window.</param>
-    /// <param name="mailboxName">
-    /// The name that other plugins use to send messages to the plugin. Use a reverse DNS name (for example,
-    /// <c>dev.example.my-plugin</c>).
-    /// </param>
-    public static IServiceCollection AddVatSysToolbox(this IServiceCollection services, string pluginName, string mailboxName)
-    {
-        return services
-            .AddClock()
-            .AddErrorReporter(pluginName)
-            .AddWindowManager()
-            .AddWorkQueue()
-            .AddPluginMessenger(mailboxName);
-    }
-
-    /// <summary>
     /// Registers <see cref="IClock"/>.
     /// </summary>
+    /// <param name="services">The service collection to add the services to.</param>
     public static IServiceCollection AddClock(this IServiceCollection services)
     {
         services.TryAddSingleton<IClock, SystemClock>();
@@ -46,6 +21,7 @@ public static class ServiceCollectionExtensionMethods
     /// <summary>
     /// Registers <see cref="IErrorReporter"/> and <see cref="IClock"/>.
     /// </summary>
+    /// <param name="services">The service collection to add the services to.</param>
     /// <param name="pluginName">The name that shows with the errors in the vatSys error window.</param>
     public static IServiceCollection AddErrorReporter(this IServiceCollection services, string pluginName)
     {
@@ -62,6 +38,7 @@ public static class ServiceCollectionExtensionMethods
     /// Registers <see cref="WindowManager"/> and <see cref="IGuiInvoker"/>.
     /// You must also register <see cref="IErrorReporter"/>.
     /// </summary>
+    /// <param name="services">The service collection to add the services to.</param>
     public static IServiceCollection AddWindowManager(this IServiceCollection services)
     {
         services.TryAddSingleton<IGuiInvoker, GuiInvoker>();
@@ -73,6 +50,7 @@ public static class ServiceCollectionExtensionMethods
     /// Registers <see cref="WorkQueue"/> and <see cref="IClock"/>.
     /// You must also register <see cref="IErrorReporter"/>.
     /// </summary>
+    /// <param name="services">The service collection to add the services to.</param>
     public static IServiceCollection AddWorkQueue(this IServiceCollection services)
     {
         services.AddClock();
@@ -84,6 +62,7 @@ public static class ServiceCollectionExtensionMethods
     /// Registers <see cref="IPluginMessenger"/> and <see cref="IMessageTransport"/>.
     /// You must also register <see cref="IErrorReporter"/>.
     /// </summary>
+    /// <param name="services">The service collection to add the services to.</param>
     /// <param name="mailboxName">
     /// The name that other plugins use to send messages to the plugin. Use a reverse DNS name (for example,
     /// <c>dev.example.my-plugin</c>).

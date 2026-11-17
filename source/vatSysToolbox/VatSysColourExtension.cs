@@ -23,10 +23,17 @@ namespace vatSysToolbox;
 [MarkupExtensionReturnType(typeof(SolidColorBrush))]
 public class VatSysColourExtension : MarkupExtension
 {
+    /// <summary>
+    /// Makes the extension. Set <see cref="Identity"/>.
+    /// </summary>
     public VatSysColourExtension()
     {
     }
 
+    /// <summary>
+    /// Makes the extension.
+    /// </summary>
+    /// <param name="identity">The name of a <see cref="Colours.Identities"/> value (for example, <c>InteractiveText</c>).</param>
     public VatSysColourExtension(string identity)
     {
         Identity = identity;

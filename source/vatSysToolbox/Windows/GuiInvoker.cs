@@ -65,10 +65,12 @@ public interface IGuiInvoker
     void InvokeOnGUI(Action<Form> action);
 }
 
+/// <inheritdoc cref="IGuiInvoker"/>
 public class GuiInvoker(IErrorReporter errorReporter) : IGuiInvoker
 {
     const string VatSysMainFormKey = "MainForm";
 
+    /// <inheritdoc/>
     public void InvokeOnGUI(Action<Form> action)
     {
         var mainForm = Application.OpenForms[VatSysMainFormKey];

@@ -4,11 +4,17 @@ using System.Windows.Input;
 
 namespace vatSysToolbox.Controls;
 
+/// <summary>
+/// A scroll bar with the vatSys style. Set <see cref="ScrollViewer"/> to the scroll viewer that it controls.
+/// </summary>
 public partial class CustomScrollBar : UserControl
 {
     bool _isDragging;
     Point _lastMousePosition;
 
+    /// <summary>
+    /// Identifies the <see cref="ScrollViewer"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty ScrollViewerProperty =
         DependencyProperty.Register(
             nameof(ScrollViewer),
@@ -16,12 +22,18 @@ public partial class CustomScrollBar : UserControl
             typeof(CustomScrollBar),
             new PropertyMetadata(null, OnScrollViewerChanged));
 
+    /// <summary>
+    /// The scroll viewer that the scroll bar controls.
+    /// </summary>
     public ScrollViewer? ScrollViewer
     {
         get => (ScrollViewer?)GetValue(ScrollViewerProperty);
         set => SetValue(ScrollViewerProperty, value);
     }
 
+    /// <summary>
+    /// Makes a scroll bar.
+    /// </summary>
     public CustomScrollBar()
     {
         InitializeComponent();

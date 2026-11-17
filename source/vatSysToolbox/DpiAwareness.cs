@@ -4,6 +4,9 @@ using Microsoft.Win32;
 
 namespace vatSysToolbox;
 
+/// <summary>
+/// Sets how Windows scales vatSys.
+/// </summary>
 public static class DpiAwareness
 {
     /// <summary>

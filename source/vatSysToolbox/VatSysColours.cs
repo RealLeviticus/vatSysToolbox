@@ -21,6 +21,7 @@ public static class VatSysColours
     /// Do not use this method in the XAML designer, because the designer cannot load the vatSys types.
     /// In XAML, use <see cref="VatSysColourExtension"/>. It gives the default vatSys colour in the designer.
     /// </summary>
+    /// <param name="identity">The colour.</param>
     public static SolidColorBrush GetColour(Colours.Identities identity)
     {
         lock (ColourCache)

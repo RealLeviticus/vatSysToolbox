@@ -10,6 +10,9 @@ namespace vatSysToolbox.Controls;
 /// </summary>
 public class BeveledLine : FrameworkElement
 {
+    /// <summary>
+    /// Identifies the <see cref="Orientation"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty OrientationProperty =
         DependencyProperty.Register(
             nameof(Orientation),
@@ -20,6 +23,9 @@ public class BeveledLine : FrameworkElement
                 FrameworkPropertyMetadataOptions.AffectsRender,
                 OnOrientationChanged));
 
+    /// <summary>
+    /// Identifies the <see cref="Flipped"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty FlippedProperty =
         DependencyProperty.Register(
             nameof(Flipped),
@@ -30,12 +36,18 @@ public class BeveledLine : FrameworkElement
                 FrameworkPropertyMetadataOptions.AffectsRender,
                 OnFlippedChanged));
 
+    /// <summary>
+    /// The direction of the line. The default is <see cref="System.Windows.Controls.Orientation.Horizontal"/>.
+    /// </summary>
     public Orientation Orientation
     {
         get => (Orientation)GetValue(OrientationProperty);
         set => SetValue(OrientationProperty, value);
     }
 
+    /// <summary>
+    /// If <c>true</c>, the line is raised, and not sunken.
+    /// </summary>
     public bool Flipped
     {
         get => (bool)GetValue(FlippedProperty);

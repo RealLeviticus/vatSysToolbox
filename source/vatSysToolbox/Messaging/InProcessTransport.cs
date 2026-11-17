@@ -43,6 +43,7 @@ public class InProcessTransport : IMessageTransport
     readonly ConcurrentDictionary<string, SharedMailbox> _mailboxes = GetOrCreateSlot<ConcurrentDictionary<string, SharedMailbox>>(MailboxesSlotName);
     readonly ConcurrentDictionary<string, bool> _openMailboxes = GetOrCreateSlot<ConcurrentDictionary<string, bool>>(OpenMailboxesSlotName);
 
+    /// <inheritdoc/>
     public IMailbox OpenMailbox(string mailboxName)
     {
         if (!_openMailboxes.TryAdd(mailboxName, true))
@@ -56,17 +57,20 @@ public class InProcessTransport : IMessageTransport
             () => _openMailboxes.TryRemove(mailboxName, out _));
     }
 
+    /// <inheritdoc/>
     public void Send(string recipient, Envelope envelope)
     {
         Enqueue(recipient, envelope);
     }
 
+    /// <inheritdoc/>
     public Task SendAsync(string recipient, Envelope envelope, CancellationToken cancellationToken)
     {
         Send(recipient, envelope);
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
     public void Broadcast(Envelope envelope)
     {
         foreach (var mailboxName in _openMailboxes.Keys)
@@ -76,6 +80,7 @@ public class InProcessTransport : IMessageTransport
         }
     }
 
+    /// <inheritdoc/>
     public Task BroadcastAsync(Envelope envelope, CancellationToken cancellationToken)
     {
         Broadcast(envelope);
@@ -174,8 +179,6 @@ public class InProcessTransport : IMessageTransport
     class Mailbox(string mailboxName, SharedMailbox sharedMailbox, Action close) : IMailbox
     {
         Action? _close = close;
-
-        public string MailboxName => mailboxName;
 
         public async Task<Envelope> Receive(CancellationToken cancellationToken)
         {

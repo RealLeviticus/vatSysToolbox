@@ -16,6 +16,9 @@ namespace vatSysToolbox.Controls;
 /// </example>
 public static class CursorCapture
 {
+    /// <summary>
+    /// Identifies the <c>IsEnabled</c> attached property. If <c>true</c>, the text box keeps the mouse cursor.
+    /// </summary>
     public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
         "IsEnabled",
         typeof(bool),
@@ -25,8 +28,17 @@ public static class CursorCapture
     // The cursor can be in only one area. This is the text box that has the cursor, or null.
     static TextBox? _capturingTextBox;
 
+    /// <summary>
+    /// Gets the value of the <c>IsEnabled</c> attached property.
+    /// </summary>
+    /// <param name="textBox">The text box.</param>
     public static bool GetIsEnabled(TextBox textBox) => (bool)textBox.GetValue(IsEnabledProperty);
 
+    /// <summary>
+    /// Sets the value of the <c>IsEnabled</c> attached property.
+    /// </summary>
+    /// <param name="textBox">The text box.</param>
+    /// <param name="value">If <c>true</c>, the text box keeps the mouse cursor.</param>
     public static void SetIsEnabled(TextBox textBox, bool value) => textBox.SetValue(IsEnabledProperty, value);
 
     static void OnIsEnabledChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)

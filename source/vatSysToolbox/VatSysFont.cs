@@ -13,14 +13,23 @@ namespace vatSysToolbox;
 /// </summary>
 public static class VatSysFont
 {
+    /// <summary>
+    /// The font family.
+    /// </summary>
     public static FontFamily Family { get; } = DesignMode.IsActive
         ? new FontFamily("Terminus (TTF), Consolas")
         : GetVatSysFamily();
 
+    /// <summary>
+    /// The font size.
+    /// </summary>
     public static double Size { get; } = DesignMode.IsActive
         ? 16
         : GetVatSysSize();
 
+    /// <summary>
+    /// The font weight.
+    /// </summary>
     public static FontWeight Weight { get; } = DesignMode.IsActive || IsVatSysFontBold()
         ? FontWeights.Bold
         : FontWeights.Regular;

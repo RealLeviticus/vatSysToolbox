@@ -5,31 +5,52 @@ using System.Windows.Input;
 
 namespace vatSysToolbox.Controls;
 
+/// <summary>
+/// A text box with the vatSys style.
+/// </summary>
 public partial class TextInput : UserControl
 {
+    /// <summary>
+    /// Makes a text box.
+    /// </summary>
     public TextInput()
     {
         InitializeComponent();
     }
 
+    /// <summary>
+    /// Identifies the <see cref="MaxCharacters"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty MaxCharactersProperty =
         DependencyProperty.Register(nameof(MaxCharacters), typeof(int), typeof(TextInput), new PropertyMetadata(100));
 
+    /// <summary>
+    /// The maximum number of characters. The default is 100.
+    /// </summary>
     public int MaxCharacters
     {
         get => (int)GetValue(MaxCharactersProperty);
         set => SetValue(MaxCharactersProperty, value);
     }
 
+    /// <summary>
+    /// Identifies the <see cref="DigitsOnly"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty DigitsOnlyProperty =
         DependencyProperty.Register(nameof(DigitsOnly), typeof(bool), typeof(TextInput), new PropertyMetadata(false));
 
+    /// <summary>
+    /// If <c>true</c>, the text box accepts only the digits 0 to 9.
+    /// </summary>
     public bool DigitsOnly
     {
         get => (bool)GetValue(DigitsOnlyProperty);
         set => SetValue(DigitsOnlyProperty, value);
     }
 
+    /// <summary>
+    /// Identifies the <see cref="CapturesCursor"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty CapturesCursorProperty =
         DependencyProperty.Register(nameof(CapturesCursor), typeof(bool), typeof(TextInput), new PropertyMetadata(false));
 
@@ -43,9 +64,15 @@ public partial class TextInput : UserControl
         set => SetValue(CapturesCursorProperty, value);
     }
 
+    /// <summary>
+    /// Identifies the <see cref="Value"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty ValueProperty =
         DependencyProperty.Register(nameof(Value), typeof(string), typeof(TextInput), new PropertyMetadata(""));
 
+    /// <summary>
+    /// The text in the text box.
+    /// </summary>
     public string Value
     {
         get => InputBox.Text;

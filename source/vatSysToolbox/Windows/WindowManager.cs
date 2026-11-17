@@ -10,6 +10,8 @@ namespace vatSysToolbox.Windows;
 /// window at that location again. A window that sizes to its content gets its size from the content, and not the last
 /// size.
 /// </summary>
+/// <param name="guiInvoker">Opens and closes the windows on the UI thread.</param>
+/// <param name="errorReporter">Reports the exceptions that occur in the windows.</param>
 public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
 {
     readonly Dictionary<string, VatSysForm> _forms = new();
@@ -19,6 +21,10 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
     /// <summary>
     /// Opens a window. If a window with the same key is already open, this method does nothing.
     /// </summary>
+    /// <param name="key">Identifies the window.</param>
+    /// <param name="title">The text in the title bar.</param>
+    /// <param name="createView">Makes the content of the window. It gets the handle of the window.</param>
+    /// <param name="options">The options of the window. If <c>null</c>, the window uses the default options.</param>
     public void Open(
         string key,
         string title,
@@ -44,6 +50,10 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
     /// <summary>
     /// Opens a window. If a window with the same key is open, the existing window is focused instead.
     /// </summary>
+    /// <param name="key">Identifies the window.</param>
+    /// <param name="title">The text in the title bar.</param>
+    /// <param name="createView">Makes the content of the window. It gets the handle of the window.</param>
+    /// <param name="options">The options of the window. If <c>null</c>, the window uses the default options.</param>
     public void OpenOrFocus(
         string key,
         string title,
@@ -69,6 +79,10 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
     /// Opens a window if it is not open, and closes it if it is open. If the window is minimized or hidden, this
     /// method focuses it.
     /// </summary>
+    /// <param name="key">Identifies the window.</param>
+    /// <param name="title">The text in the title bar.</param>
+    /// <param name="createView">Makes the content of the window. It gets the handle of the window.</param>
+    /// <param name="options">The options of the window. If <c>null</c>, the window uses the default options.</param>
     public void Toggle(
         string key,
         string title,
@@ -99,6 +113,8 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
     /// <summary>
     /// Opens a <see cref="PopupForm"/> at the mouse cursor.
     /// </summary>
+    /// <param name="createView">Makes the content of the popup. It gets the handle of the popup.</param>
+    /// <param name="options">The options of the popup. If <c>null</c>, the popup uses the default options.</param>
     public void ShowPopup(Func<IWindowHandle, FrameworkElement> createView, PopupOptions? options = null)
     {
         guiInvoker.InvokeOnGUI(mainForm =>
@@ -112,6 +128,7 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
     /// <summary>
     /// Returns <c>true</c> if a window with the key is open.
     /// </summary>
+    /// <param name="key">Identifies the window.</param>
     public bool IsOpen(string key)
     {
         lock (_gate)
@@ -123,6 +140,7 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
     /// <summary>
     /// Closes the window with the key. If no window with the key is open, this method does nothing.
     /// </summary>
+    /// <param name="key">Identifies the window.</param>
     public void Close(string key)
     {
         VatSysForm? form;

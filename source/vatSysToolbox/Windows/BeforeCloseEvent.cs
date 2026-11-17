@@ -10,7 +10,7 @@ static class BeforeCloseEvent
 {
     /// <summary>
     /// Runs each handler, and cancels the close if a handler sets <see cref="CancelEventArgs.Cancel"/> and the close
-    /// can be cancelled.
+    /// can be canceled.
     /// </summary>
     public static void Raise(
         EventHandler<CancelEventArgs>? beforeClose,

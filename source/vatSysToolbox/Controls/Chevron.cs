@@ -4,6 +4,9 @@ using System.Windows.Media;
 
 namespace vatSysToolbox.Controls;
 
+/// <summary>
+/// The direction that a <see cref="Chevron"/> points to.
+/// </summary>
 public enum Direction
 {
     Left, Up, Right, Down
@@ -18,6 +21,9 @@ public enum Direction
 /// </remarks>
 public class Chevron : Control
 {
+    /// <summary>
+    /// Identifies the <see cref="Direction"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty DirectionProperty =
         DependencyProperty.Register(
             nameof(Direction),
@@ -27,6 +33,9 @@ public class Chevron : Control
                 Direction.Up,
                 FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>
+    /// Identifies the <see cref="BevelWidth"/> dependency property.
+    /// </summary>
     public static readonly DependencyProperty BevelWidthProperty =
         DependencyProperty.Register(
             nameof(BevelWidth),
@@ -36,6 +45,9 @@ public class Chevron : Control
                 Bevel.LineWidth / 2,
                 FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>
+    /// The direction that the chevron points to. The default is <see cref="Controls.Direction.Up"/>.
+    /// </summary>
     public Direction Direction
     {
         get => (Direction) GetValue(DirectionProperty);
@@ -52,6 +64,9 @@ public class Chevron : Control
         set => SetValue(BevelWidthProperty, value);
     }
 
+    /// <summary>
+    /// Makes a chevron that is 9 by 9 pixels.
+    /// </summary>
     public Chevron()
     {
         Width = 9;

@@ -4,9 +4,13 @@ using vatSysToolbox.Controls;
 
 namespace vatSysToolbox.Converters;
 
+/// <summary>
+/// Converts a <see cref="Direction"/> to a rotation angle in degrees, clockwise from <see cref="Direction.Up"/>.
+/// </summary>
 [ValueConversion(typeof(Direction), typeof(double))]
 public class DirectionToRotationAngleConverter : IValueConverter
 {
+    /// <inheritdoc/>
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is Direction direction)
@@ -24,6 +28,7 @@ public class DirectionToRotationAngleConverter : IValueConverter
         throw new NotSupportedException();
     }
 
+    /// <inheritdoc/>
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         throw new NotImplementedException();

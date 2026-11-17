@@ -60,17 +60,28 @@ The toolbox targets .NET Framework 4.7.2, and it references `vatSys.exe`. Set th
 
 ### Services
 
-Register the toolbox services with `Microsoft.Extensions.DependencyInjection`. You must also register the logging services.
+Register the toolbox services that your plugin uses with `Microsoft.Extensions.DependencyInjection`. You must also register the logging services.
 
 ```csharp
 var services = new ServiceCollection()
     .AddLogging()
-    .AddVatSysToolbox("My Plugin", "dev.example.my-plugin");
+    .AddErrorReporter("My Plugin")
+    .AddWindowManager()
+    .AddWorkQueue()
+    .AddPluginMessenger("dev.example.my-plugin");
 ```
+
+| Method | Registers | Needs |
+| --- | --- | --- |
+| `AddClock` | `IClock` | |
+| `AddErrorReporter` | `IErrorReporter`, `IClock` | |
+| `AddWindowManager` | `WindowManager`, `IGuiInvoker` | `IErrorReporter` |
+| `AddWorkQueue` | `WorkQueue`, `IClock` | `IErrorReporter` |
+| `AddPluginMessenger` | `IPluginMessenger`, `IMessageTransport` | `IErrorReporter` |
 
 The plugin name shows with the errors in the vatSys error window. Other plugins use the mailbox name to send messages to your plugin. Use a reverse DNS name for the mailbox name.
 
-To use a different implementation of a service, register it before you call `AddVatSysToolbox`. You can also register each service with its own method (`AddClock`, `AddErrorReporter`, `AddWindowManager`, `AddWorkQueue`, and `AddPluginMessenger`).
+These methods do not replace a service that is already registered. To use a different implementation of a service, register it before you call these methods.
 
 ### Windows
 

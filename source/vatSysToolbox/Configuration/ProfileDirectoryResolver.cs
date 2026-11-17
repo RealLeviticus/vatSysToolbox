@@ -5,11 +5,15 @@ using vatsys;
 
 namespace vatSysToolbox.Configuration;
 
+/// <summary>
+/// Finds the directory of the vatSys profile.
+/// </summary>
 public static class ProfileDirectoryResolver
 {
     /// <summary>
     /// Gets the directory of the vatSys profile that is loaded.
     /// </summary>
+    /// <param name="directoryInfo">The directory of the profile, or <c>null</c> if no profile is loaded.</param>
     /// <returns><c>false</c> if no profile is loaded.</returns>
     public static bool TryGetProfileDirectory([NotNullWhen(true)] out DirectoryInfo? directoryInfo)
     {

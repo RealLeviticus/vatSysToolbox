@@ -8,10 +8,8 @@ using System.Windows.Input;
 namespace vatSysToolbox.Windows;
 
 /// <summary>
-/// A form with no border or title bar, at the mouse cursor (plus an offset). The form closes when it is not the active
-/// form (for example, when the user clicks outside it), and when the user middle-clicks it. When the form closes, it
-/// disposes the view model of the content (<see cref="FrameworkElement.DataContext"/>) if the view model is
-/// <see cref="IDisposable"/> or <see cref="IAsyncDisposable"/>.
+/// A form with no border or title bar, at the mouse cursor (plus an optional offset). The form closes when it is not
+/// the active form (for example, when the user clicks outside it), or when the user middle-clicks it.
 /// </summary>
 public class PopupForm : Form
 {
@@ -21,8 +19,17 @@ public class PopupForm : Form
 
     bool _isClosing;
 
+    /// <summary>
+    /// Lets the view control this form.
+    /// </summary>
     public IWindowHandle WindowHandle => _windowHandle;
 
+    /// <param name="createView">Makes the content of the form. It gets the <see cref="WindowHandle"/>.</param>
+    /// <param name="errorReporter">
+    /// Reports the exceptions that occur in the <see cref="IWindowHandle.BeforeClose"/> handlers, and when the form
+    /// disposes the view model.
+    /// </param>
+    /// <param name="options">The position and the behaviour of the popup.</param>
     public PopupForm(Func<IWindowHandle, FrameworkElement> createView, IErrorReporter errorReporter, PopupOptions options)
     {
         _errorReporter = errorReporter;

@@ -14,5 +14,8 @@ namespace vatSysToolbox.MediatR;
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class PluginMessageHandlerAttribute(string type) : Attribute
 {
+    /// <summary>
+    /// The type of the message.
+    /// </summary>
     public string Type { get; } = type;
 }

@@ -47,7 +47,9 @@ public class Plugin : IPlugin
 
         _serviceProvider = new ServiceCollection()
             .AddLogging()
-            .AddVatSysToolbox(Name, MailboxName)
+            .AddErrorReporter(Name)
+            .AddWindowManager()
+            .AddPluginMessenger(MailboxName)
             .BuildServiceProvider();
 
         var errorReporter = _serviceProvider.GetRequiredService<IErrorReporter>();

@@ -7,9 +7,7 @@ using vatsys;
 namespace vatSysToolbox.Windows;
 
 /// <summary>
-/// A vatSys form that hosts WPF content. When the form closes, it disposes the view model of the content
-/// (<see cref="FrameworkElement.DataContext"/>) if the view model is <see cref="IDisposable"/> or
-/// <see cref="IAsyncDisposable"/>.
+/// A vatSys form that hosts WPF content.
 /// </summary>
 public class VatSysForm : BaseForm
 {
@@ -17,7 +15,7 @@ public class VatSysForm : BaseForm
     /// Occurs when the user closes the form. Set <c>Cancel</c> to keep the form open.
     /// This event does not fire when you call <see cref="ForceClose"/>.
     /// </summary>
-    public event FormClosingEventHandler? CustomFormClosing;
+    public event FormClosingEventHandler? CustomFormClosing; // TODO: Rename
 
     // BaseForm draws the grip 11px tall, 12px above the bottom of the client area.
     const int SizeGripHeight = 12;
@@ -29,8 +27,23 @@ public class VatSysForm : BaseForm
 
     readonly WindowHandle _windowHandle;
 
+    /// <summary>
+    /// Lets the view control this form.
+    /// </summary>
     public IWindowHandle WindowHandle => _windowHandle;
 
+    /// <param name="title">The text in the title bar.</param>
+    /// <param name="createView">Makes the content of the form. It gets the <see cref="WindowHandle"/>.</param>
+    /// <param name="errorReporter">
+    /// Reports the exceptions that occur in the <see cref="IWindowHandle.BeforeClose"/> handlers, and when the form
+    /// disposes the view model.
+    /// </param>
+    /// <param name="sizeToContent">
+    /// If <c>true</c>, the form gets its size from the view, and the user cannot change the size.
+    /// </param>
+    /// <param name="canClose">If <c>false</c>, the form has no close button.</param>
+    /// <param name="canMinimise">If <c>false</c>, the form has no minimise button.</param>
+    /// <param name="middleClickToClose">If <c>true</c>, a middle-click on the form closes it.</param>
     public VatSysForm(
         string title,
         Func<IWindowHandle, FrameworkElement> createView,
