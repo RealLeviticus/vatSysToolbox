@@ -27,7 +27,9 @@ public class VatSysForm : BaseForm
 
     bool ForceClosing { get; set; }
 
-    public IWindowHandle WindowHandle { get; }
+    readonly WindowHandle _windowHandle;
+
+    public IWindowHandle WindowHandle => _windowHandle;
 
     public VatSysForm(
         string title,
@@ -45,8 +47,8 @@ public class VatSysForm : BaseForm
         MiddleClickClose = middleClickToClose;
 
         _errorReporter = errorReporter;
-        WindowHandle = new WindowHandle(this);
-        _view = createView(WindowHandle);
+        _windowHandle = new WindowHandle(this);
+        _view = createView(_windowHandle);
 
         var elementHost = new ElementHost
         {
@@ -125,6 +127,12 @@ public class VatSysForm : BaseForm
         {
             e.Cancel = false;
         }
+
+        // The form is only hidden
+        if (e.Cancel)
+            return;
+
+        _windowHandle.RaiseBeforeClose(e, canCancel: !ForceClosing, _errorReporter);
     }
 
     protected override void OnFormClosed(FormClosedEventArgs e)

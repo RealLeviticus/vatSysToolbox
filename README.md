@@ -77,19 +77,35 @@ To use a different implementation of a service, register it before you call `Add
 Use `WindowManager` to open a WPF view in a vatSys window. Each window has a key. The window manager keeps the last position of each key.
 
 ```csharp
-windowManager.FocusOrCreateWindow(
+windowManager.OpenOrFocus(
     "my-plugin.settings",
     "Settings",
-    windowHandle => new SettingsView(windowHandle));
+    windowHandle => new SettingsView(new SettingsViewModel(windowHandle)),
+    new WindowOptions { Size = WindowSize.Absolute(400, 300), CanMinimise = false });
 ```
 
-- `FocusOrCreateWindow` focuses the window if it is already open.
-- `TryCreateWindow` does nothing if the window is already open.
-- `CloseWindow` closes the window.
+- `Open` opens the window. It does nothing if the window is already open.
+- `OpenOrFocus` opens the window, or focuses it if it is already open.
+- `Toggle` opens the window, or closes it if it is already open. If the window is minimised, `Toggle` focuses it.
+- `IsOpen` tells you if the window is open.
+- `Close` closes the window.
 
-The view receives an `IWindowHandle`. Use it to close or focus the window, or to know when the window shows, closes, or moves. WPF controls in the window can get the keyboard focus only after the `Shown` event.
+`WindowOptions` sets these options of the window:
 
-Use `ShowPopup` to show a WPF view in a small popup at the mouse cursor. The popup has no border or title bar, and it closes when the user clicks outside it. Use the `IWindowHandle` to close the popup from the view or the view model.
+- `Size`: `WindowSize.Content` (the default) gives the window the size of the view, and the user cannot change it. `WindowSize.Absolute(width, height)` gives the window a size that the user can change. After the first time, the window opens with its last size.
+- `CanClose` and `CanMinimise` show or hide the close and minimise buttons.
+- `MiddleClickToClose`: a middle-click on the title bar closes the window. The default is `false`.
+
+The view receives an `IWindowHandle`. Give it to the view model, so that the view model can control its window:
+
+- `Focus` and `Close` focus and close the window.
+- `Shown` occurs when the window shows for the first time. WPF controls in the window can get the keyboard focus only after this event.
+- `Moved` occurs when the window moves.
+- `BeforeClose` occurs when the window is about to close. Set `Cancel` to `true` to keep the window open. Some closes cannot be cancelled (for example, when vatSys closes).
+
+When the window closes, it disposes the view model (the `DataContext` of the view) if the view model is `IDisposable` or `IAsyncDisposable`.
+
+Use `ShowPopup` to show a WPF view in a small popup at the mouse cursor. `PopupOptions` sets an offset from the cursor in screen pixels, and if a middle-click closes the popup (the default is `true`). The popup has no border or title bar, and it closes when the user clicks outside it. Use the `IWindowHandle` to close the popup from the view or the view model.
 
 ```csharp
 windowManager.ShowPopup(windowHandle => new MyPopupView(new MyPopupViewModel(windowHandle)));

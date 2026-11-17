@@ -30,11 +30,15 @@ public partial class TagListViewModel : ObservableObject, IDisposable
         Items.Add(new TagListItemViewModel("VH-ABC", " A4321 120 ", string.Empty));
     }
 
-    public TagListViewModel(IMessenger messenger, IGuiInvoker guiInvoker, IErrorReporter errorReporter)
+    public TagListViewModel(IMessenger messenger, IWindowHandle windowHandle, IGuiInvoker guiInvoker, IErrorReporter errorReporter)
     {
         _messenger = messenger;
         _guiInvoker = guiInvoker;
         _errorReporter = errorReporter;
+
+        // Tell the plugin when the window shows and closes, so that it can show the state of the Tag List
+        windowHandle.Shown += (_, _) => _messenger.Send(new TagListOpenedMessage());
+        windowHandle.BeforeClose += (_, _) => _messenger.Send(new TagListClosedMessage());
 
         // The list gets the events for all the items. If each item subscribed when it is added, the events that come
         // just after the add event (for example, the global ops text after an edit) could come before the

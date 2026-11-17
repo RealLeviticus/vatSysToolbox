@@ -17,53 +17,17 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
     readonly object _gate = new();
 
     /// <summary>
-    /// Opens a window. If a window with the same key is open, this method focuses that window.
+    /// Opens a window. If a window with the same key is already open, this method does nothing.
     /// </summary>
-    public void FocusOrCreateWindow(
+    public void Open(
         string key,
         string title,
         Func<IWindowHandle, FrameworkElement> createView,
-        bool sizeToContent = true,
-        bool canClose = true,
-        bool canMinimise = true,
-        Size? size = null,
-        Action<VatSysForm>? configureForm = null)
+        WindowOptions? options = null)
     {
-        guiInvoker.InvokeOnGUI(mainForm =>
-        {
-            lock (_gate)
-            {
-                if (_forms.TryGetValue(key, out var existingForm))
-                {
-                    existingForm.WindowHandle.Focus();
-                    return;
-                }
-
-                CreateWindow(mainForm, key, title, createView, sizeToContent, canClose, canMinimise, size, configureForm);
-            }
-        });
-    }
-
-    /// <summary>
-    /// Opens a window. If a window with the same key is open, this method does nothing.
-    /// </summary>
-    public void TryCreateWindow(
-        string key,
-        string title,
-        Func<IWindowHandle, FrameworkElement> createView,
-        bool sizeToContent = true,
-        bool canClose = true,
-        bool canMinimise = true,
-        Size? size = null,
-        Action<VatSysForm>? configureForm = null)
-    {
-        // Callers can call this method often (for example, each time the data changes). Do not post to the UI thread
-        // if the window is open.
-        lock (_gate)
-        {
-            if (_forms.ContainsKey(key))
-                return;
-        }
+        // Save a call to the UI thread if the window is already open
+        if (IsOpen(key))
+            return;
 
         guiInvoker.InvokeOnGUI(mainForm =>
         {
@@ -72,7 +36,62 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
                 if (_forms.ContainsKey(key))
                     return;
 
-                CreateWindow(mainForm, key, title, createView, sizeToContent, canClose, canMinimise, size, configureForm);
+                CreateWindow(mainForm, key, title, createView, options ?? new WindowOptions());
+            }
+        });
+    }
+
+    /// <summary>
+    /// Opens a window. If a window with the same key is open, the existing window is focused instead.
+    /// </summary>
+    public void OpenOrFocus(
+        string key,
+        string title,
+        Func<IWindowHandle, FrameworkElement> createView,
+        WindowOptions? options = null)
+    {
+        guiInvoker.InvokeOnGUI(mainForm =>
+        {
+            lock (_gate)
+            {
+                if (_forms.TryGetValue(key, out var form))
+                {
+                    form.WindowHandle.Focus();
+                    return;
+                }
+
+                CreateWindow(mainForm, key, title, createView, options ?? new WindowOptions());
+            }
+        });
+    }
+
+    /// <summary>
+    /// Opens a window if it is not open, and closes it if it is open. If the window is minimized or hidden, this
+    /// method focuses it.
+    /// </summary>
+    public void Toggle(
+        string key,
+        string title,
+        Func<IWindowHandle, FrameworkElement> createView,
+        WindowOptions? options = null)
+    {
+        guiInvoker.InvokeOnGUI(mainForm =>
+        {
+            lock (_gate)
+            {
+                if (!_forms.TryGetValue(key, out var form))
+                {
+                    CreateWindow(mainForm, key, title, createView, options ?? new WindowOptions());
+                    return;
+                }
+
+                if (!form.Visible || form.WindowState == FormWindowState.Minimized)
+                {
+                    form.WindowHandle.Focus();
+                    return;
+                }
+
+                form.ForceClose();
             }
         });
     }
@@ -80,43 +99,36 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
     /// <summary>
     /// Opens a <see cref="PopupForm"/> at the mouse cursor.
     /// </summary>
-    public void ShowPopup(Func<IWindowHandle, FrameworkElement> createView)
+    public void ShowPopup(Func<IWindowHandle, FrameworkElement> createView, PopupOptions? options = null)
     {
         guiInvoker.InvokeOnGUI(mainForm =>
         {
-            var form = new PopupForm(createView, errorReporter);
+            var form = new PopupForm(createView, errorReporter, options ?? new PopupOptions());
             MMI.EnsureWindowVisible(form);
             form.Show(mainForm);
         });
     }
 
-    public bool TryGetWindow(string key, out IWindowHandle? windowHandle)
+    /// <summary>
+    /// Returns <c>true</c> if a window with the key is open.
+    /// </summary>
+    public bool IsOpen(string key)
     {
         lock (_gate)
         {
-            if (_forms.TryGetValue(key, out var form))
-            {
-                windowHandle = form.WindowHandle;
-                return true;
-            }
-
-            windowHandle = null;
-            return false;
+            return _forms.ContainsKey(key);
         }
     }
 
-    public void CloseWindow(string key)
+    /// <summary>
+    /// Closes the window with the key. If no window with the key is open, this method does nothing.
+    /// </summary>
+    public void Close(string key)
     {
-        // Do not post to the UI thread if the window is not open
-        lock (_gate)
-        {
-            if (!_forms.ContainsKey(key))
-                return;
-        }
-        
         VatSysForm? form;
         lock (_gate)
         {
+            // Do not post to the UI thread if the window is not open
             if (!_forms.TryGetValue(key, out form))
                 return;
         }
@@ -139,13 +151,16 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
         string key,
         string title,
         Func<IWindowHandle, FrameworkElement> createView,
-        bool sizeToContent,
-        bool canClose,
-        bool canMinimise,
-        Size? size,
-        Action<VatSysForm>? configureForm)
+        WindowOptions options)
     {
-        var form = new VatSysForm(title, createView, errorReporter, sizeToContent, canClose, canMinimise)
+        var form = new VatSysForm(
+            title,
+            createView,
+            errorReporter,
+            sizeToContent: options.Size is WindowSize.ContentSize,
+            options.CanClose,
+            options.CanMinimise,
+            options.MiddleClickToClose)
         {
             StartPosition = FormStartPosition.CenterParent
         };
@@ -154,10 +169,10 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
         if (form.IsDisposed)
             return;
 
-        if (size.HasValue)
+        if (options.Size is WindowSize.AbsoluteSize absoluteSize)
         {
-            form.Width = (int)size.Value.Width;
-            form.Height = (int)size.Value.Height;
+            form.Width = (int)absoluteSize.Size.Width;
+            form.Height = (int)absoluteSize.Size.Height;
         }
 
         if (_lastBounds.TryGetValue(key, out var lastBounds))
@@ -165,11 +180,10 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
             form.StartPosition = FormStartPosition.Manual;
             form.Location = lastBounds.Location;
 
-            if (!sizeToContent)
+            // A window that sizes to its content gets its size from the content, and not the last size
+            if (options.Size is WindowSize.AbsoluteSize)
                 form.Size = lastBounds.Size;
         }
-
-        configureForm?.Invoke(form);
 
         form.PerformLayout();
         form.Closed += (_, _) => OnWindowClosed(key, form);

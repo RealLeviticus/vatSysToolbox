@@ -64,6 +64,11 @@ public class Plugin : IPlugin
         AddMenuItem("Rad Tag", OpenQuickTagWindow);
         AddMenuItem("Del Tag", RemoveSelectedQuickTag);
 
+        // The view model tells the plugin when the window shows and closes, also when the window closes for a reason
+        // that is not a toggle. The messages come on the UI thread.
+        WeakReferenceMessenger.Default.Register<Plugin, TagListOpenedMessage>(this, (plugin, _) => plugin.ShowState(isOpen: true));
+        WeakReferenceMessenger.Default.Register<Plugin, TagListClosedMessage>(this, (plugin, _) => plugin.ShowState(isOpen: false));
+
         _messenger.Subscribe(TagListMessages.Toggle, ToggleTagList);
         _messenger.Subscribe(TagListMessages.AddQuickTag, OpenQuickTagWindow);
         _messenger.Subscribe(TagListMessages.RemoveQuickTag, RemoveSelectedQuickTag);
@@ -79,17 +84,6 @@ public class Plugin : IPlugin
         {
             _errorReporter.ReportError(ex, "Cannot send the vatSys events. The Tag List does not show the changes.");
         }
-    }
-
-    void OpenTagList()
-    {
-        _windowManager.TryCreateWindow(
-            WindowKey,
-            WindowTitle,
-            _ => new TagList(new TagListViewModel(WeakReferenceMessenger.Default, _guiInvoker, _errorReporter)),
-            sizeToContent: false,
-            canClose: false,
-            canMinimise: false);
     }
 
     // Adds an item to the vatSys Tools menu. The click occurs on the UI thread.
@@ -117,30 +111,19 @@ public class Plugin : IPlugin
         return item;
     }
 
+    // The window manager opens and closes the window on the UI thread. Thus, this method can run on any thread.
+    void ToggleTagList()
+    {
+        _windowManager.Toggle(
+            WindowKey,
+            WindowTitle,
+            windowHandle => new TagList(new TagListViewModel(WeakReferenceMessenger.Default, windowHandle, _guiInvoker, _errorReporter)),
+            new WindowOptions { Size = WindowSize.Absolute(300, 300), CanClose = false, CanMinimise = false });
+    }
+
     // These actions can come from a menu item on the UI thread, or from a message on a background thread. They change
     // the UI or the vatSys state, thus they run on the UI thread. On the UI thread, InvokeOnGUI runs the action
     // immediately.
-
-    void ToggleTagList()
-    {
-        _guiInvoker.InvokeOnGUI(_ =>
-        {
-            // On the UI thread, the window manager opens and closes the window immediately. Thus, two quick toggles
-            // cannot both open the window.
-            if (_windowManager.TryGetWindow(WindowKey, out _))
-            {
-                _windowManager.CloseWindow(WindowKey);
-                _tagListMenuItem.Checked = false;
-                SendState(TagListMessages.Closed);
-            }
-            else
-            {
-                OpenTagList();
-                _tagListMenuItem.Checked = true;
-                SendState(TagListMessages.Opened);
-            }
-        });
-    }
 
     void OpenQuickTagWindow()
     {
@@ -197,8 +180,14 @@ public class Plugin : IPlugin
         }
     }
 
-    // Tells the other plugins (for example, the Tag List button of the Eurocat Menus plugin) that the Tag List is shown
-    // or hidden
+    // Shows the state in the Tools menu, and tells the other plugins (for example, the Tag List button of the Eurocat
+    // Menus plugin) that the Tag List is shown or hidden
+    void ShowState(bool isOpen)
+    {
+        _tagListMenuItem.Checked = isOpen;
+        SendState(isOpen ? TagListMessages.Opened : TagListMessages.Closed);
+    }
+
     void SendState(string messageType)
     {
         try

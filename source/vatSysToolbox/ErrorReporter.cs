@@ -22,16 +22,16 @@ public class ErrorReporter(string source, ILogger<ErrorReporter> logger, IClock 
     public void ReportError(Exception exception)
     {
         logger.LogError(exception, "An error occurred");
-        ShowError(exception);
+        TryShowError(exception);
     }
 
     public void ReportError(Exception exception, string message)
     {
         logger.LogError(exception, message);
-        ShowError(exception);
+        TryShowError(exception);
     }
 
-    void ShowError(Exception exception)
+    void TryShowError(Exception exception)
     {
         lock (_lastShownTimes)
         {
