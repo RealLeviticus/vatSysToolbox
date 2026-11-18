@@ -1,4 +1,4 @@
-namespace vatSysToolbox;
+namespace vatSysToolbox.Infrastructure;
 
 /// <summary>
 /// Gives the current time. Use a different clock in tests.

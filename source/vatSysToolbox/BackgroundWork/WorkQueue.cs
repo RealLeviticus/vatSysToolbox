@@ -3,8 +3,9 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
+using vatSysToolbox.Infrastructure;
 
-namespace vatSysToolbox;
+namespace vatSysToolbox.BackgroundWork;
 
 /// <summary>
 /// Does the work items one at a time, in the sequence that they were added.

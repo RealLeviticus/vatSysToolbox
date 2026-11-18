@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using vatSysToolbox.BackgroundWork;
 
 namespace vatSysToolbox.Messaging;
 

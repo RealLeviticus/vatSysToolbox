@@ -13,7 +13,7 @@ namespace vatSysToolbox.Windows;
 /// <item>
 /// The code can run on a thread that is not the vatSys UI thread. For example: <c>OnFDRUpdate</c> and
 /// <c>OnRadarTrackUpdate</c>, the <c>Network</c> events, the plugin messenger handlers, the MediatR handlers, the
-/// <see cref="WorkQueue"/>, <c>Task.Run</c>, <c>System.Timers.Timer</c>, and code after
+/// <see cref="BackgroundWork.WorkQueue"/>, <c>Task.Run</c>, <c>System.Timers.Timer</c>, and code after
 /// <c>ConfigureAwait(false)</c>. Some vatSys events (for example, <c>MMI.SelectedTrackChanged</c>) can occur on any
 /// thread.
 /// </item>

@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using vatsys;
 using vatSysToolbox;
+using vatSysToolbox.Infrastructure;
 using vatSysToolbox.Windows;
 
 namespace EurocatMenusPlugin.ViewModels;

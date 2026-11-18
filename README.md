@@ -15,13 +15,18 @@
 
 vatSys Toolbox contains the code that many vatSys plugins need. It has these features:
 
-- **Windows:** Show WPF views in native vatSys windows.
-- **Styles and controls:** WPF styles and controls inherit the style defined in the loaded vatSys profile.
-- **Workload management:** Background work and queue abstractions.
-- **Messages between plugins:** Send messages, requests, and broadcasts to other plugins in the same vatSys process.
-- **MediatR:** Handle the messages from other plugins with MediatR (in the `vatSysToolbox.MediatR` package).
-- **Configuration:** Find configuration files in the vatSys profile.
-- **DPI awareness:** Make sure that WPF content in vatSys has the correct scale.
+- **[Error reporting](#error-reporting):** Write errors to the log, and show them in the vatSys error window.
+- **[Clock](#clock):** Get the current time from a clock that you can replace in tests.
+- **[Windows](#windows):** Show WPF views in native vatSys windows.
+- **[Styles and controls](#styles-and-controls):** WPF styles and controls inherit the style defined in the loaded vatSys profile.
+- **[Background work](#background-work):** Background work and queue abstractions.
+- **[Messages between plugins](#messages-between-plugins):** Send messages, requests, and broadcasts to other plugins in the same vatSys process.
+- **[Configuration](#configuration):** Find configuration files in the vatSys profile.
+- **[DPI awareness](#dpi-awareness):** Make sure that WPF content in vatSys has the correct scale.
+
+Integrations:
+
+- **[MediatR](#mediatr):** Handle the messages from other plugins with MediatR (in the `vatSysToolbox.MediatR` package).
 
 ## Installation
 
@@ -56,46 +61,51 @@ The toolbox targets .NET Framework 4.7.2, and it references `vatSys.exe`. Set th
 > [!IMPORTANT]
 > Merge the toolbox into your plugin assembly (for example, with ILRepack). Other plugins can use different versions of the toolbox. If you do not merge the toolbox, vatSys can load the incorrect version.
 
-## Usage
+## Service collection
 
-### Services
-
-Register the toolbox services that your plugin uses with `Microsoft.Extensions.DependencyInjection`. You must also register the logging services.
+Register the features that your plugin uses in a `ServiceCollection` from `Microsoft.Extensions.DependencyInjection`. Each feature has an extension method, and you can chain the calls. You must also register the logging services.
 
 ```csharp
 var services = new ServiceCollection()
     .AddLogging()
-    .AddErrorReporter("My Plugin")
+    .AddErrorReporter("My Plugin")                // The name that shows with the errors
+    .AddClock()
     .AddWindowManager()
     .AddWorkQueue()
-    .AddPluginMessenger("dev.example.my-plugin");
+    .AddPluginMessenger("dev.example.my-plugin"); // The mailbox name of your plugin
 ```
 
-| Method | Registers | Needs |
-| --- | --- | --- |
-| `AddClock` | `IClock` | |
-| `AddErrorReporter` | `IErrorReporter`, `IClock` | |
-| `AddWindowManager` | `WindowManager`, `IGuiInvoker` | `IErrorReporter` |
-| `AddWorkQueue` | `WorkQueue`, `IClock` | `IErrorReporter` |
-| `AddPluginMessenger` | `IPluginMessenger`, `IMessageTransport` | `IErrorReporter` |
+If you do not register an error reporter, the other features ignore their errors.
 
-The plugin name shows with the errors in the vatSys error window. Other plugins use the mailbox name to send messages to your plugin. Use a reverse DNS name for the mailbox name.
+## Features
 
-These methods do not replace a service that is already registered. To use a different implementation of a service, register it before you call these methods.
+In the larger features, **Usage** tells you how to use the feature, and **Notes** has the details that you need only sometimes.
+
+### Error reporting
+
+`IErrorReporter` writes errors to the log, and shows them in the vatSys error window. The error window shows each error message one time each minute at most.
+
+```csharp
+errorReporter.ReportError(exception, "Could not load the configuration");
+```
+
+### Clock
+
+`IClock` gives the current time in UTC. Use a fake clock in tests.
 
 ### Windows
 
-Use `WindowManager` to open a WPF view in a vatSys window. Each window has a key. The window manager keeps the last position of each key.
+Use `WindowManager` to open a WPF view in a vatSys window. Each is identified by a key.
 
 ```csharp
 windowManager.OpenOrFocus(
-    "my-plugin.settings",
-    "Settings",
-    windowHandle => new SettingsView(new SettingsViewModel(windowHandle)),
+    key: "my-plugin.settings",
+    title: "Settings",
+    createView: windowHandle => new SettingsView(new SettingsViewModel(windowHandle)),
     new WindowOptions { Size = WindowSize.Absolute(400, 300), CanMinimise = false });
 ```
 
-- `Open` opens the window. It does nothing if the window is already open.
+- `Open` opens the window.
 - `OpenOrFocus` opens the window, or focuses it if it is already open.
 - `Toggle` opens the window, or closes it if it is already open. If the window is minimised, `Toggle` focuses it.
 - `IsOpen` tells you if the window is open.
@@ -103,9 +113,9 @@ windowManager.OpenOrFocus(
 
 `WindowOptions` sets these options of the window:
 
-- `Size`: `WindowSize.Content` (the default) gives the window the size of the view, and the user cannot change it. `WindowSize.Absolute(width, height)` gives the window a size that the user can change. After the first time, the window opens with its last size.
+- `Size`: `WindowSize.Content` (the default) gives the window the size of the view, and the user cannot change it. `WindowSize.Absolute(width, height)` gives the window a size that the user can change.
 - `CanClose` and `CanMinimise` show or hide the close and minimise buttons.
-- `MiddleClickToClose`: a middle-click on the title bar closes the window. The default is `false`.
+- `MiddleClickToClose`: a middle-click on the window background closes the window. The default is `false`.
 
 The view receives an `IWindowHandle`. Give it to the view model, so that the view model can control its window:
 
@@ -114,13 +124,13 @@ The view receives an `IWindowHandle`. Give it to the view model, so that the vie
 - `Moved` occurs when the window moves.
 - `BeforeClose` occurs when the window is about to close. Set `Cancel` to `true` to keep the window open. Some closes cannot be cancelled (for example, when vatSys closes).
 
-When the window closes, it disposes the view model (the `DataContext` of the view) if the view model is `IDisposable` or `IAsyncDisposable`.
-
-Use `ShowPopup` to show a WPF view in a small popup at the mouse cursor. `PopupOptions` sets an offset from the cursor in screen pixels, and if a middle-click closes the popup (the default is `true`). The popup has no border or title bar, and it closes when the user clicks outside it. Use the `IWindowHandle` to close the popup from the view or the view model.
+Use `ShowPopup` to show a WPF view in a small popup at the mouse cursor. You can provide an offset using `PopupOptions`. The popup has no border or title bar, and it closes when the user clicks outside it. Use the `IWindowHandle` to close the popup from the view or the view model.
 
 ```csharp
 windowManager.ShowPopup(windowHandle => new MyPopupView(new MyPopupViewModel(windowHandle)));
 ```
+
+When the window closes, it disposes the view model (the `DataContext` of the view) if the view model is `IDisposable` or `IAsyncDisposable`.
 
 ### Styles and controls
 
@@ -149,14 +159,6 @@ To keep the mouse cursor in a text box while the text box has the keyboard focus
 <controls:TextInput CapturesCursor="True" />
 ```
 
-### Error reporting
-
-`IErrorReporter` writes errors to the log, and shows them in the vatSys error window. The error window shows each error message one time each minute at most.
-
-```csharp
-errorReporter.ReportError(exception, "Could not load the configuration");
-```
-
 ### Background work
 
 `WorkQueue` does work items one at a time, in the sequence that they were added. Work items that change the same state do not need a lock if they use the same queue.
@@ -165,7 +167,7 @@ errorReporter.ReportError(exception, "Could not load the configuration");
 workQueue.Enqueue(async () => await UpdateSequence());
 ```
 
-`BackgroundTask` runs a long-running worker that you can start and stop.
+`BackgroundTask` runs a long-running worker that you can start and stop. Make one for each worker.
 
 ### Messages between plugins
 
@@ -197,6 +199,8 @@ messenger.Start();
 await messenger.BroadcastAsync("dev.example.my-plugin.sequence-updated", sequence, json);
 var reply = await messenger.RequestAsync("OtherPlugin", "dev.example.other-plugin.get-status", query, json);
 ```
+
+Other plugins use the mailbox name of your plugin to send messages to it. Use a reverse DNS name for the mailbox name.
 
 Use a reverse domain name as the prefix of each message type (for example, `dev.example.my-plugin.sequence-updated`). This prevents conflicts between plugins.
 
@@ -262,7 +266,27 @@ WeakReferenceMessenger.Default.Register<Plugin, WindowOpenedMessage>(this, (plug
 
 The [Tag List plugin](source/TagListPlugin) uses this pattern.
 
-#### MediatR
+### Configuration
+
+`ConfigurationLocator` finds a configuration file. It searches these directories in this sequence:
+
+1. `Profile\Plugins\Configs\<Plugin Name>`
+2. `Profile\Plugins\Configs`
+3. `Profile\Plugins`
+4. `Profile`
+5. The directory of the plugin assembly
+
+```csharp
+var configurationFilePath = ConfigurationLocator.LocateConfigurationFile(this, "MyPlugin.json");
+```
+
+### DPI awareness
+
+WPF content in vatSys has the correct scale only if Windows runs vatSys as a DPI-unaware application. Call `DpiAwareness.EnsureDpiAwareness()` when your plugin starts. This method sets the Windows compatibility setting for `vatSys.exe`. If the setting changes, the method restarts vatSys.
+
+## Integrations
+
+### MediatR
 
 The `vatSysToolbox.MediatR` package sends the messages and the requests from other plugins to MediatR handlers. Add the package to your plugin project:
 
@@ -270,7 +294,9 @@ The `vatSysToolbox.MediatR` package sends the messages and the requests from oth
 dotnet add package vatSysToolbox.MediatR
 ```
 
-Then connect each message type to a notification or a request:
+The package uses MediatR 12. Merge MediatR into your plugin assembly too.
+
+Connect each message type to a notification or a request:
 
 ```csharp
 var json = new JsonMessageSerializer();
@@ -307,27 +333,7 @@ MediatR publishes a notification to all the handlers of its class. Thus, all the
 
 The serializer converts the payload to the notification or the request, and the response to the reply. The handlers run on the thread of the messenger. Use `IGuiInvoker` to change the UI from a handler (see [The UI thread](#the-ui-thread)).
 
-The package uses MediatR 12. Merge MediatR into your plugin assembly too.
-
-### Configuration
-
-`ConfigurationLocator` finds a configuration file. It searches these directories in this sequence:
-
-1. `Profile\Plugins\Configs\<Plugin Name>`
-2. `Profile\Plugins\Configs`
-3. `Profile\Plugins`
-4. `Profile`
-5. The directory of the plugin assembly
-
-```csharp
-var configurationFilePath = ConfigurationLocator.LocateConfigurationFile(this, "MyPlugin.json");
-```
-
-### DPI awareness
-
-WPF content in vatSys has the correct scale only if Windows runs vatSys as a DPI-unaware application. Call `DpiAwareness.EnsureDpiAwareness()` when your plugin starts. This method sets the Windows compatibility setting for `vatSys.exe`. If the setting changes, the method restarts vatSys.
-
-### The UI thread
+## The UI thread
 
 vatSys and all the plugins use one UI thread. `IGuiInvoker` does an action on that thread. Do not use `IGuiInvoker` unless you must.
 

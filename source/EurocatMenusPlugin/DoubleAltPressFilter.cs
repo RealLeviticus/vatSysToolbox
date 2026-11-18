@@ -1,5 +1,5 @@
 using System.Windows.Forms;
-using vatSysToolbox;
+using vatSysToolbox.Infrastructure;
 
 namespace EurocatMenusPlugin;
 

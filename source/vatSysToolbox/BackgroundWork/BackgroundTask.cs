@@ -1,4 +1,4 @@
-namespace vatSysToolbox;
+namespace vatSysToolbox.BackgroundWork;
 
 /// <summary>
 /// Runs a long-running worker that you can start and stop.
