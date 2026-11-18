@@ -33,6 +33,10 @@
   <ItemGroup>
     <!-- MediatR 13 and later need a commercial licence for some uses -->
     <PackageReference Include="MediatR" Version="12.4.1" />
+    <PackageReference Include="Polyfill" Version="11.4.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
