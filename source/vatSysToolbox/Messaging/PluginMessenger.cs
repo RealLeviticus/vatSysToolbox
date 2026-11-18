@@ -131,7 +131,10 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
     /// </param>
     /// <param name="transport">Moves the messages between the plugins.</param>
     /// <param name="errorReporter">Reports the errors that occur when the messenger receives or handles a message.</param>
-    /// <param name="logger">Logs the broadcasts that have no handler, and the replies that have no request.</param>
+    /// <param name="logger">
+    /// Logs the messages that are sent and received, the broadcasts that have no handler, and the replies that have
+    /// no request.
+    /// </param>
     /// <exception cref="MessagingException">A different plugin uses the same mailbox name.</exception>
     public PluginMessenger(string mailboxName, IMessageTransport transport, IErrorReporter errorReporter, ILogger<PluginMessenger> logger)
     {
@@ -153,6 +156,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
     public void Send(string recipient, string type, MessageContent? content = null)
     {
         var envelope = CreateEnvelope(EnvelopeKind.Message, type, content);
+        LogSending(envelope, recipient);
         _transport.Send(recipient, envelope);
     }
 
@@ -160,6 +164,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
     public Task SendAsync(string recipient, string type, MessageContent? content = null, CancellationToken cancellationToken = default)
     {
         var envelope = CreateEnvelope(EnvelopeKind.Message, type, content);
+        LogSending(envelope, recipient);
         return _transport.SendAsync(recipient, envelope, cancellationToken);
     }
 
@@ -167,6 +172,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
     public void Broadcast(string type, MessageContent? content = null)
     {
         var envelope = CreateEnvelope(EnvelopeKind.Broadcast, type, content);
+        LogSending(envelope, recipient: null);
         _transport.Broadcast(envelope);
     }
 
@@ -174,6 +180,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
     public Task BroadcastAsync(string type, MessageContent? content = null, CancellationToken cancellationToken = default)
     {
         var envelope = CreateEnvelope(EnvelopeKind.Broadcast, type, content);
+        LogSending(envelope, recipient: null);
         return _transport.BroadcastAsync(envelope, cancellationToken);
     }
 
@@ -188,6 +195,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         {
             using (cancellationToken.Register(() => reply.TrySetCanceled(cancellationToken)))
             {
+                LogSending(envelope, recipient);
                 await _transport.SendAsync(recipient, envelope, cancellationToken).ConfigureAwait(false);
                 return await reply.Task.ConfigureAwait(false);
             }
@@ -289,6 +297,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
             try
             {
                 var envelope = await _mailbox.Receive(cancellationToken).ConfigureAwait(false);
+                LogReceived(envelope);
                 switch (envelope.Kind)
                 {
                     case EnvelopeKind.Message:
@@ -380,6 +389,7 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
 
         try
         {
+            LogSending(reply, request.Sender);
             await _transport.SendAsync(request.Sender, reply, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -404,6 +414,34 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
         }
 
         pendingRequest.TrySetResult(ToPluginMessage(reply));
+    }
+
+    void LogSending(Envelope envelope, string? recipient)
+    {
+        _logger.LogDebug(
+            "{Mailbox} sending {Kind} {Type} ({Id}) to {Recipient}, {PayloadLength} bytes, correlation {CorrelationId}, error {Error}",
+            _mailboxName,
+            envelope.Kind,
+            envelope.Type,
+            envelope.Id,
+            recipient ?? "all plugins",
+            envelope.Payload.Length,
+            envelope.CorrelationId ?? "none",
+            envelope.Error ?? "none");
+    }
+
+    void LogReceived(Envelope envelope)
+    {
+        _logger.LogDebug(
+            "{Mailbox} received {Kind} {Type} ({Id}) from {Sender}, {PayloadLength} bytes, correlation {CorrelationId}, error {Error}",
+            _mailboxName,
+            envelope.Kind,
+            envelope.Type,
+            envelope.Id,
+            envelope.Sender,
+            envelope.Payload.Length,
+            envelope.CorrelationId ?? "none",
+            envelope.Error ?? "none");
     }
 
     Envelope CreateEnvelope(EnvelopeKind kind, string type, MessageContent? content)
