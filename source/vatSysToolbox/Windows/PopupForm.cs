@@ -36,7 +36,7 @@ public class PopupForm : Form
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
-        Location = Cursor.Position + options.Offset;
+        Location = System.Windows.Forms.Cursor.Position + options.Offset;
 
         _windowHandle = new PopupWindowHandle(this);
         _view = createView(_windowHandle);
