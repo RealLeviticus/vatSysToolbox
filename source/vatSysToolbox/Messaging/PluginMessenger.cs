@@ -108,8 +108,9 @@ public interface IPluginMessenger
 /// each other from their handlers.
 /// </para>
 /// <para>
-/// If a direct message or a request has no handler, the messenger reports an error, and the requester receives the
-/// error. If a broadcast message has no handler, the messenger ignores it.
+/// If a direct message or a request has no handler, the messenger logs a warning. The sender of a direct message is
+/// not told. The requester receives an error reply, so that it does not wait forever. If a broadcast message has no
+/// handler, the messenger ignores it.
 /// </para>
 /// </remarks>
 public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
@@ -347,7 +348,8 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
                 return;
             }
 
-            throw new MessagingException($"{_mailboxName} has no handler for the message {envelope.Type} from {envelope.Sender}.");
+            _logger.LogWarning("{Mailbox} has no handler for the message {Type} from {Sender}", _mailboxName, envelope.Type, envelope.Sender);
+            return;
         }
 
         var message = ToPluginMessage(envelope);
@@ -376,10 +378,16 @@ public sealed class PluginMessenger : IPluginMessenger, IAsyncDisposable
             }
 
             if (handler is null)
-                throw new MessagingException($"{_mailboxName} has no handler for the request {request.Type} from {request.Sender}.");
-
-            var content = await handler(ToPluginMessage(request), cancellationToken).ConfigureAwait(false);
-            reply = CreateReply(request, content.ContentType, content.Payload, error: null);
+            {
+                // Log only. The requester still receives an error reply so that it does not wait forever.
+                _logger.LogWarning("{Mailbox} has no handler for the request {Type} from {Sender}", _mailboxName, request.Type, request.Sender);
+                reply = CreateReply(request, string.Empty, [], $"{_mailboxName} has no handler for the request {request.Type}.");
+            }
+            else
+            {
+                var content = await handler(ToPluginMessage(request), cancellationToken).ConfigureAwait(false);
+                reply = CreateReply(request, content.ContentType, content.Payload, error: null);
+            }
         }
         catch (Exception ex)
         {

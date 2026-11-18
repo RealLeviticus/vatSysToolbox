@@ -206,7 +206,7 @@ The message data is bytes. Each message has a content type, so plugins can use d
 var sequence = message.Deserialize<Sequence>(json, messagePack);
 ```
 
-If a plugin receives a direct message or a request that it has no handler for, it shows an error in the vatSys error window. The requester receives a `MessagingException`.
+If a plugin receives a direct message or a request that it has no handler for, it logs a warning. The sender of a direct message is not told. The requester of a request receives a `MessagingException`, so that it does not wait forever.
 
 #### Messages inside a plugin
 
