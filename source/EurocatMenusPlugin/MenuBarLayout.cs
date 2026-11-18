@@ -49,6 +49,8 @@ public class MenuBarLayout
     /// </summary>
     public bool AreMenusVisible { get; private set; }
 
+    public event EventHandler? AreMenusVisibleChanged;
+
     /// <summary>
     /// Adds the menus, and shows them.
     /// </summary>
@@ -96,6 +98,7 @@ public class MenuBarLayout
         SetVatSysMenuVisible(false);
 
         AreMenusVisible = true;
+        AreMenusVisibleChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -114,6 +117,18 @@ public class MenuBarLayout
         SetVatSysMenuVisible(true);
 
         AreMenusVisible = false;
+        AreMenusVisibleChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Shows the menus if they are hidden, or hides them if they show.
+    /// </summary>
+    public void ToggleMenus()
+    {
+        if (AreMenusVisible)
+            HideMenus();
+        else
+            ShowMenus();
     }
 
     /// <summary>

@@ -34,6 +34,9 @@ public class Plugin : IPlugin
     // The text of the item in the vatSys Settings menu that shows the menus again
     const string ShowMenusItemText = "Eurocat Menus";
 
+    // The text of the item in the vatSys Windows menu that shows or hides the menus
+    const string ToggleMenusItemText = "Eurocat Menus";
+
     // The key of the vatSys main form in Application.OpenForms
     const string VatSysMainFormKey = "MainForm";
 
@@ -157,6 +160,31 @@ public class Plugin : IPlugin
         Application.AddMessageFilter(doubleAltPressFilter);
 
         AddShowMenusItem(menuBar, errorReporter);
+        AddToggleMenusItem(menuBar, errorReporter);
+    }
+
+    // Shows or hides the menus from the vatSys Windows menu. The check mark shows if the menus show.
+    static void AddToggleMenusItem(MenuBarLayout menuBar, IErrorReporter errorReporter)
+    {
+        var item = new ToolStripMenuItem(ToggleMenusItemText) { Checked = menuBar.AreMenusVisible };
+        menuBar.AreMenusVisibleChanged += (_, _) => item.Checked = menuBar.AreMenusVisible;
+        item.Click += (_, _) =>
+        {
+            // An exception that is not caught on the UI thread stops vatSys.
+            try
+            {
+                menuBar.ToggleMenus();
+            }
+            catch (Exception ex)
+            {
+                errorReporter.ReportError(ex, "Cannot show or hide the menus");
+            }
+        };
+
+        MMI.AddCustomMenuItem(new CustomToolStripMenuItem(
+            CustomToolStripMenuItemWindowType.Main,
+            CustomToolStripMenuItemCategory.Windows,
+            item));
     }
 
     // When the menus are hidden, the vatSys menu bar shows. This item shows the menus again.
