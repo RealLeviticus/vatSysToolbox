@@ -7,6 +7,8 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using TagListPlugin.ViewModels;
 using TagListPlugin.Views;
+using vatsys;
+using vatsys.Plugin;
 using vatSysToolbox;
 using vatSysToolbox.Extensions;
 using vatSysToolbox.Messaging;
