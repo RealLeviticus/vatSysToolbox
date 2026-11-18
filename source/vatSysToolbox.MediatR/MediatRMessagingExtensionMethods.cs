@@ -23,7 +23,7 @@ public static class MediatRMessagingExtensionMethods
     /// <param name="type">The type of the message (for example, <c>dev.example.my-plugin.thing-changed</c>).</param>
     /// <param name="serializer">Converts the payload of the message to the notification.</param>
     /// <param name="mediator">Publishes the notifications.</param>
-    public static IDisposable PublishNotifications<TNotification>(
+    public static IDisposable SubscribeNotification<TNotification>(
         this IPluginMessenger messenger,
         string type,
         IMediator mediator,
@@ -44,7 +44,7 @@ public static class MediatRMessagingExtensionMethods
     /// <param name="serializer">Converts the payload to the request, and the response to a payload.</param>
     /// <param name="mediator">Sends the requests to their handlers.</param>
     /// <exception cref="InvalidOperationException">The type already has a request handler.</exception>
-    public static IDisposable SendRequests<TRequest, TResponse>(
+    public static IDisposable HandleRequest<TRequest, TResponse>(
         this IPluginMessenger messenger,
         string type,
         IMediator mediator,
@@ -63,8 +63,8 @@ public static class MediatRMessagingExtensionMethods
 
     /// <summary>
     /// Connects each handler in the assembly that has a <see cref="PluginMessageHandlerAttribute"/>. A notification
-    /// handler is connected with <see cref="PublishNotifications{TNotification}"/>, and a request handler with
-    /// <see cref="SendRequests{TRequest,TResponse}"/>.
+    /// handler is connected with <see cref="SubscribeNotification{TNotification}"/>, and a request handler with
+    /// <see cref="HandleRequest{TRequest,TResponse}"/>.
     /// Dispose the return value to stop.
     /// </summary>
     /// <param name="messenger">The messenger that receives the messages.</param>
@@ -101,8 +101,8 @@ public static class MediatRMessagingExtensionMethods
                     continue;
 
                 var method = handlerInterface.GetGenericTypeDefinition() == typeof(INotificationHandler<>)
-                    ? nameof(PublishNotifications)
-                    : nameof(SendRequests);
+                    ? nameof(SubscribeNotification)
+                    : nameof(HandleRequest);
 
                 subscriptions.Add(Connect(method, typeArguments, messenger, attribute.Type, mediator, serializer));
             }

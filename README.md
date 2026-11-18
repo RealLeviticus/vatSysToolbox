@@ -276,10 +276,10 @@ Then connect each message type to a notification or a request:
 var json = new JsonMessageSerializer();
 
 // All the INotificationHandler<SequenceUpdatedNotification> handlers receive each message
-messenger.PublishNotifications<SequenceUpdatedNotification>("dev.example.other-plugin.sequence-updated", mediator, json);
+messenger.SubscribeNotification<SequenceUpdatedNotification>("dev.example.other-plugin.sequence-updated", mediator, json);
 
 // The IRequestHandler<GetSequenceRequest, Sequence> handler gives the reply to each request
-messenger.SendRequests<GetSequenceRequest, Sequence>("dev.example.my-plugin.get-sequence", mediator, json);
+messenger.HandleRequest<GetSequenceRequest, Sequence>("dev.example.my-plugin.get-sequence", mediator, json);
 
 messenger.Start();
 ```
