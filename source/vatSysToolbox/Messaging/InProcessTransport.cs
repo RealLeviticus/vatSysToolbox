@@ -1,5 +1,18 @@
 using System.Collections.Concurrent;
 using SharedEnvelope = System.Collections.Generic.IDictionary<string, object>;
+// Item1 is the queue of envelopes. Item2 is the semaphore, which counts the envelopes in the queue.
+//
+// Do not change this to a record, a class, or a struct that the toolbox declares. In .NET, the identity of a type
+// includes the assembly that contains it. Each plugin merges its own copy of the toolbox into its assembly (or loads
+// its own vatSysToolbox.dll), thus a type that the toolbox declares is a different type in each plugin, also if the
+// name, the members, and the version are the same. The other plugins then cannot cast the value in the AppDomain slot.
+//
+// System.Tuple, ConcurrentQueue, IDictionary, and SemaphoreSlim are in mscorlib and System. vatSys loads these
+// assemblies one time for the process, thus all the plugins have the same types. Do not use ValueTuple: on .NET
+// Framework it can come from the System.ValueTuple package, and plugins can load different copies of that package.
+using SharedMailbox = System.Tuple<
+    System.Collections.Concurrent.ConcurrentQueue<System.Collections.Generic.IDictionary<string, object>>,
+    System.Threading.SemaphoreSlim>;
 
 namespace vatSysToolbox.Messaging;
 
@@ -20,10 +33,6 @@ namespace vatSysToolbox.Messaging;
 /// </remarks>
 public class InProcessTransport : IMessageTransport
 {
-    record struct SharedMailbox(
-        ConcurrentQueue<SharedEnvelope> Queue,
-        SemaphoreSlim SemaphoreSlim);
-    
     // Value: ConcurrentDictionary<string, SharedMailbox>. The key is the mailbox name.
     const string MailboxesSlotName = "vatSysToolbox.Messaging.InProcess.v1.Mailboxes";
 
@@ -90,15 +99,15 @@ public class InProcessTransport : IMessageTransport
     void Enqueue(string mailboxName, Envelope envelope)
     {
         var mailbox = GetOrCreateMailbox(mailboxName);
-        mailbox.Queue.Enqueue(ToSharedEnvelope(envelope));
-        mailbox.SemaphoreSlim.Release();
+        mailbox.Item1.Enqueue(ToSharedEnvelope(envelope));
+        mailbox.Item2.Release();
     }
 
     SharedMailbox GetOrCreateMailbox(string mailboxName)
     {
         return _mailboxes.GetOrAdd(
             mailboxName,
-            _ => new SharedMailbox(new ConcurrentQueue<SharedEnvelope>(), new SemaphoreSlim(0)));
+            _ => Tuple.Create(new ConcurrentQueue<SharedEnvelope>(), new SemaphoreSlim(0)));
     }
 
     static T GetOrCreateSlot<T>(string slotName) where T : class, new()
@@ -183,8 +192,8 @@ public class InProcessTransport : IMessageTransport
         public async Task<Envelope> Receive(CancellationToken cancellationToken)
         {
             // The semaphore count is the same as the number of envelopes in the queue.
-            await sharedMailbox.SemaphoreSlim.WaitAsync(cancellationToken).ConfigureAwait(false);
-            if (!sharedMailbox.Queue.TryDequeue(out var sharedEnvelope))
+            await sharedMailbox.Item2.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (!sharedMailbox.Item1.TryDequeue(out var sharedEnvelope))
             {
                 throw new MessagingException($"The mailbox {mailboxName} is empty.");
             }
