@@ -119,7 +119,7 @@ public class Plugin : IPlugin
             WindowKey,
             WindowTitle,
             windowHandle => new TagList(new TagListViewModel(WeakReferenceMessenger.Default, windowHandle, _guiInvoker, _errorReporter)),
-            new WindowOptions { Size = WindowSize.Absolute(300, 300), CanClose = false, CanMinimise = false });
+            new WindowOptions { Size = WindowSize.Absolute(300, 300), CanClose = true, CanMinimise = false });
     }
 
     // These actions can come from a menu item on the UI thread, or from a message on a background thread. They change
