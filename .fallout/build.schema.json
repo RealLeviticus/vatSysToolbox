@@ -26,9 +26,15 @@
       "enum": [
         "CheckVersion",
         "Compile",
+        "CompilePlugin",
         "DownloadVatSys",
+        "Install",
         "Pack",
-        "Release"
+        "PackagePlugin",
+        "Publish",
+        "Release",
+        "RepackPlugin",
+        "Uninstall"
       ]
     },
     "Verbosity": {
@@ -120,8 +126,12 @@
         },
         "GitHubToken": {
           "type": "string",
-          "description": "GitHub token for creating releases",
+          "description": "GitHub token for creating releases and publishing packages",
           "default": "Secrets must be entered via 'fallout :secrets [profile]'"
+        },
+        "ProfileName": {
+          "type": "string",
+          "description": "Name of the vatSys profile to install the plugin to"
         },
         "VatSysPath": {
           "type": "string",
