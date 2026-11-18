@@ -17,6 +17,9 @@ public class VatSysForm : BaseForm
     /// </summary>
     public event FormClosingEventHandler? CustomFormClosing;
 
+    // BaseForm draws the grip 11px tall, 12px above the bottom of the client area.
+    const int SizeGripHeight = 12;
+
     bool ForceClosing { get; set; }
 
     public IWindowHandle WindowHandle { get; }
@@ -56,6 +59,7 @@ public class VatSysForm : BaseForm
             view.SizeChanged += (_, e) => ResizeToContent(e.NewSize);
 
             FormBorderStyle = FormBorderStyle.FixedSingle;
+            Padding = new Padding(0);
         }
         else
         {
@@ -63,11 +67,14 @@ public class VatSysForm : BaseForm
 
             FormBorderStyle = FormBorderStyle.Sizable;
             Resizeable = true;
+
+            // When Resizeable is true, BaseForm.OnPaint draws a size grip in the bottom-right corner of the client
+            // area. Leave a strip at the bottom so the ElementHost does not cover the grip.
+            Padding = new Padding(0, 0, 0, SizeGripHeight);
         }
 
         Controls.Add(elementHost);
 
-        Padding = new Padding(0);
         Margin = new Padding(0);
     }
 
