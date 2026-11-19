@@ -1,5 +1,8 @@
 # Tag List Plugin
 
+> [!NOTE]
+> Even though the development of this plugin was inspired by real ATM systems such as those from Thales Group, the plugin is absolutely NOT affiliated with or endorsed by said company. The plugin and all associated files shall be used solely for the purpose of simulation on the VATSIM network.
+
 A simple example plugin that uses vatSys Toolbox.
 
 The Tag List shows the quick tags in vatSys. Each strip shows the aircraft ID (ACID), the SSR code, and the Mode C level of the quick tag. The list changes when vatSys adds, edits, or removes a quick tag.
