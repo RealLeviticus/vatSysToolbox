@@ -2,6 +2,7 @@ using System.ComponentModel.Composition;
 using System.Windows.Forms;
 using CommunityToolkit.Mvvm.Messaging;
 using EurocatMenusPlugin.Configuration;
+using EurocatMenusPlugin.FlightPlan;
 using EurocatMenusPlugin.Shims;
 using EurocatMenusPlugin.ViewModels;
 using EurocatMenusPlugin.Views;
@@ -41,7 +42,11 @@ public class Plugin : IPlugin
     // The key of the vatSys main form in Application.OpenForms
     const string VatSysMainFormKey = "MainForm";
 
+    // The text of the item in the vatSys Settings menu that selects the Flight Plan Window of this plugin
+    const string FlightPlanWindowItemText = "Eurocat Flight Plan Window";
+
     readonly IServiceProvider _serviceProvider;
+    readonly FlightPlanWindowSettings _flightPlanWindowSettings;
 
     string IPlugin.Name => Name;
 
@@ -64,6 +69,19 @@ public class Plugin : IPlugin
         catch (Exception ex)
         {
             errorReporter.ReportError(ex, "Cannot send the vatSys events. The menus do not show the changes.");
+        }
+
+        // Read the selection before the patches apply, so that the first window that opens is the selected window
+        _flightPlanWindowSettings = new FlightPlanWindowSettings(FlightPlanWindowSettings.DefaultFilePath, errorReporter);
+        FlightPlanWindowPatches.IsEnabled = _flightPlanWindowSettings.Load();
+
+        try
+        {
+            FlightPlanWindowPatches.Apply(errorReporter);
+        }
+        catch (Exception ex)
+        {
+            errorReporter.ReportError(ex, "Cannot replace the vatSys Flight Plan Window. The vatSys window shows.");
         }
 
         // vatSys loads the plugins while it creates the main form. The main form is ready only after the message
@@ -139,9 +157,15 @@ public class Plugin : IPlugin
         _ = new BuiltInMessageHandlers(vatSysMenu, menuBar, messenger, guiInvoker);
         _ = new StripSetupWindow(vatSysMenu, menuEvents, messenger, vatSysMessenger, guiInvoker);
         _ = new FullScreenMode(mainForm, menuEvents, messenger, guiInvoker);
+        var flightPlanWindowSwitch = new FlightPlanWindowSwitch(
+            _flightPlanWindowSettings,
+            menuEvents,
+            messenger,
+            guiInvoker);
 
         messenger.Start();
         builtInEvents.SendCurrentState();
+        flightPlanWindowSwitch.SendCurrentState();
 
         menuBar.AddMenus(new TopMenu(topMenuViewModel), new BottomMenu(bottomMenuViewModel));
 
@@ -162,6 +186,37 @@ public class Plugin : IPlugin
 
         AddShowMenusItem(menuBar, errorReporter);
         AddToggleMenusItem(menuBar, errorReporter);
+        AddFlightPlanWindowItem(flightPlanWindowSwitch, errorReporter);
+    }
+
+    // Selects the Flight Plan Window of this plugin or the vatSys window, from the vatSys Settings menu. Thus, the
+    // selection is also available when the menus of this plugin are hidden. The check mark shows if the window of this
+    // plugin is selected.
+    static void AddFlightPlanWindowItem(FlightPlanWindowSwitch flightPlanWindowSwitch, IErrorReporter errorReporter)
+    {
+        var item = new ToolStripMenuItem(FlightPlanWindowItemText)
+        {
+            Checked = flightPlanWindowSwitch.IsEurocatWindowEnabled
+        };
+        flightPlanWindowSwitch.IsEurocatWindowEnabledChanged +=
+            (_, _) => item.Checked = flightPlanWindowSwitch.IsEurocatWindowEnabled;
+        item.Click += (_, _) =>
+        {
+            // An exception that is not caught on the UI thread stops vatSys.
+            try
+            {
+                flightPlanWindowSwitch.Toggle();
+            }
+            catch (Exception ex)
+            {
+                errorReporter.ReportError(ex, "Cannot select the Flight Plan Window");
+            }
+        };
+
+        MMI.AddCustomMenuItem(new CustomToolStripMenuItem(
+            CustomToolStripMenuItemWindowType.Main,
+            CustomToolStripMenuItemCategory.Settings,
+            item));
     }
 
     // Shows or hides the menus from the vatSys Windows menu. The check mark shows if the menus show.
