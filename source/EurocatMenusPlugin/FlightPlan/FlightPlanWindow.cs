@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using vatsys;
 using vatSysToolbox;
 using vatSysToolbox.Windows;
@@ -27,9 +28,66 @@ public class FlightPlanWindow(WindowManager windowManager, IErrorReporter errorR
         // Each window has its own key, so that more than one window can be open, the same as the vatSys window
         var key = KeyPrefix + Interlocked.Increment(ref _windowCount);
 
+        FlightPlanView? view = null;
         windowManager.Open(
             key,
             Title,
-            windowHandle => new FlightPlanView(new FlightPlanViewModel(fdr, errorReporter), windowHandle));
+            windowHandle => view = new FlightPlanView(new FlightPlanViewModel(fdr, errorReporter), windowHandle));
+
+        // Show the whole window at once, and not piece by piece as the vatSys UI thread gets idle
+        view?.FlushPaint();
+    }
+
+    /// <summary>
+    /// Makes and discards one view, so that the first window opens as fast as the next windows. This loads the XAML
+    /// and the shared styles, measures the font, and compiles the code of the view and the view model.
+    /// Call this method on the UI thread when vatSys is ready (for example, when the message loop is idle).
+    /// </summary>
+    public void WarmUp()
+    {
+        var viewModel = new FlightPlanViewModel(null, errorReporter);
+        try
+        {
+            var view = new FlightPlanView(viewModel, NullWindowHandle.Instance);
+
+            // The templates apply when the view is measured
+            view.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+        }
+        finally
+        {
+            viewModel.Dispose();
+        }
+    }
+
+    // A window handle for a view that is never shown
+    sealed class NullWindowHandle : IWindowHandle
+    {
+        public static NullWindowHandle Instance { get; } = new();
+
+        public event EventHandler? Shown
+        {
+            add { }
+            remove { }
+        }
+
+        public event EventHandler? Moved
+        {
+            add { }
+            remove { }
+        }
+
+        public event EventHandler<CancelEventArgs>? BeforeClose
+        {
+            add { }
+            remove { }
+        }
+
+        public void Focus()
+        {
+        }
+
+        public void Close()
+        {
+        }
     }
 }

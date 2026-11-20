@@ -1,7 +1,9 @@
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using vatSysToolbox.Controls;
 using vatSysToolbox.Windows;
@@ -18,6 +20,10 @@ namespace EurocatMenusPlugin.FlightPlan;
 /// </remarks>
 public partial class FlightPlanView : UserControl
 {
+    const uint RedrawInvalidate = 0x0001;
+    const uint RedrawAllChildren = 0x0080;
+    const uint RedrawUpdateNow = 0x0100;
+
     readonly FlightPlanViewModel _viewModel;
     readonly Dictionary<FieldViewModel, TextBox> _fieldBoxes = new();
     bool _fieldsConnected;
@@ -31,10 +37,49 @@ public partial class FlightPlanView : UserControl
         _viewModel = viewModel;
         DataContext = viewModel;
 
+        FitRowsToButtonGrid();
+
         Loaded += (_, _) => ConnectScrollBars();
 
         // WPF controls in the window can get the keyboard focus only after the window shows
         windowHandle.Shown += (_, _) => FocusField(_viewModel.Acid);
+    }
+
+    [DllImport("user32.dll")]
+    static extern bool RedrawWindow(IntPtr hWnd, IntPtr lprcUpdate, IntPtr hrgnUpdate, uint flags);
+
+    /// <summary>
+    /// Lays out and paints the window right now. Call this method after the window shows.
+    /// </summary>
+    /// <remarks>
+    /// Windows paints a window only when the message queue of its thread is empty, and WPF renders from the
+    /// dispatcher queue. The vatSys UI thread is rarely idle, thus a window that waits for the queue fills in piece by
+    /// piece. This method does the layout, and then asks Windows to paint the window and all its children at once.
+    /// </remarks>
+    internal void FlushPaint()
+    {
+        UpdateLayout();
+
+        if (PresentationSource.FromVisual(this) is not HwndSource source)
+            return;
+
+        // Paint the vatSys window too, so that its title bar and border show with the content
+        var host = System.Windows.Forms.Control.FromChildHandle(source.Handle);
+        var window = host?.FindForm()?.Handle ?? source.Handle;
+        RedrawWindow(window, IntPtr.Zero, IntPtr.Zero, RedrawInvalidate | RedrawAllChildren | RedrawUpdateNow);
+    }
+
+    // The window measures the view with no width limit. A row that wraps text would then take the width of its text,
+    // and make the window wider. Give those rows the width of the button grid, which is the widest row. One
+    // measurement here saves a second layout pass and a second resize of the window.
+    void FitRowsToButtonGrid()
+    {
+        ButtonGrid.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var width = ButtonGrid.DesiredSize.Width;
+
+        RouteRow.Width = width;
+        RemarksRow.Width = width;
+        MessageArea.Width = width;
     }
 
     // The text boxes bind to the fields through their DataContext. Find the text box of each field, so that the field

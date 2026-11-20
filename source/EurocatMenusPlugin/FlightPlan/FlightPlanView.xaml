@@ -16,7 +16,7 @@
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="/vatSysToolbox;component/Styles.xaml" />
+                <toolbox:SharedResourceDictionary Source="/vatSysToolbox;component/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <!-- The function buttons in the grid at the top -->
@@ -171,9 +171,9 @@
     <StackPanel Margin="8">
 
         <!--
-            Function buttons. This is the widest row. The window measures the view with no width limit, thus the rows
-            that wrap text (RTE, OTHER, and the message area) take the width of this row, so that they wrap instead of
-            making the window wider.
+            Function buttons. This is the widest row. The window measures the view with no width limit, thus the code
+            behind gives the rows that wrap text (RTE, OTHER, and the message area) the width of this row, so that
+            they wrap instead of making the window wider.
         -->
         <Grid x:Name="ButtonGrid" HorizontalAlignment="Left">
             <Grid.ColumnDefinitions>
@@ -299,7 +299,7 @@
         </StackPanel>
 
         <!-- Route -->
-        <Grid Margin="0,6,0,0" HorizontalAlignment="Left" Width="{Binding ActualWidth, ElementName=ButtonGrid}">
+        <Grid x:Name="RouteRow" Margin="0,6,0,0" HorizontalAlignment="Left">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="54" />
                 <ColumnDefinition Width="*" />
@@ -311,7 +311,7 @@
         </Grid>
 
         <!-- Remarks -->
-        <Grid Margin="0,4,0,0" HorizontalAlignment="Left" Width="{Binding ActualWidth, ElementName=ButtonGrid}">
+        <Grid x:Name="RemarksRow" Margin="0,4,0,0" HorizontalAlignment="Left">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="54" />
                 <ColumnDefinition Width="*" />
@@ -342,7 +342,7 @@
         </StackPanel>
 
         <!-- Message area: two lines -->
-        <Border Style="{StaticResource MessageAreaStyle}" Height="40" Margin="0,8,0,0" Padding="4,0" HorizontalAlignment="Left" Width="{Binding ActualWidth, ElementName=ButtonGrid}">
+        <Border x:Name="MessageArea" Style="{StaticResource MessageAreaStyle}" Height="40" Margin="0,8,0,0" Padding="4,0" HorizontalAlignment="Left">
             <TextBlock Style="{StaticResource LabelStyle}" Text="{Binding ErrorMessage}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
         </Border>
 

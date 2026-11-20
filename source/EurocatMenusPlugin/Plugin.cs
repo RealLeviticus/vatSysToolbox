@@ -47,6 +47,7 @@ public class Plugin : IPlugin
 
     readonly IServiceProvider _serviceProvider;
     readonly FlightPlanWindowSettings _flightPlanWindowSettings;
+    readonly FlightPlanWindow _flightPlanWindow;
 
     string IPlugin.Name => Name;
 
@@ -75,12 +76,13 @@ public class Plugin : IPlugin
         _flightPlanWindowSettings = new FlightPlanWindowSettings(FlightPlanWindowSettings.DefaultFilePath, errorReporter);
         FlightPlanWindowPatches.IsEnabled = _flightPlanWindowSettings.Load();
 
+        _flightPlanWindow = new FlightPlanWindow(
+            _serviceProvider.GetRequiredService<WindowManager>(),
+            errorReporter);
+
         try
         {
-            var flightPlanWindow = new FlightPlanWindow(
-                _serviceProvider.GetRequiredService<WindowManager>(),
-                errorReporter);
-            FlightPlanWindowPatches.Apply(errorReporter, flightPlanWindow.Open);
+            FlightPlanWindowPatches.Apply(errorReporter, _flightPlanWindow.Open);
         }
         catch (Exception ex)
         {
@@ -104,6 +106,16 @@ public class Plugin : IPlugin
         catch (Exception ex)
         {
             _serviceProvider.GetRequiredService<IErrorReporter>().ReportError(ex, "Cannot replace the vatSys menu bar");
+        }
+
+        // Load the Flight Plan Window once now, so that the first window opens as fast as the next windows
+        try
+        {
+            _flightPlanWindow.WarmUp();
+        }
+        catch (Exception ex)
+        {
+            _serviceProvider.GetRequiredService<IErrorReporter>().ReportError(ex, "Cannot load the Flight Plan Window");
         }
     }
 
