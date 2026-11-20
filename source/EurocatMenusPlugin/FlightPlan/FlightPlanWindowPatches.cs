@@ -37,6 +37,7 @@ public static class FlightPlanWindowPatches
     const string OpenMethod = "OpenFPWindow";
 
     static IErrorReporter? _errorReporter;
+    static Action<FDP2.FDR?>? _openWindow;
     static FieldInfo? _vatSysWindowFdrField;
 
     // True while the vatSys window opens because FlightPlanWindow could not open. vatSys opens the window on the UI
@@ -62,12 +63,18 @@ public static class FlightPlanWindowPatches
     /// </summary>
     public static bool LastOpenReplacedVatSysWindow { get; private set; }
 
+    /// <param name="errorReporter">Reports the exceptions that occur in the patches.</param>
+    /// <param name="openWindow">
+    /// Opens the window of this plugin for a flight plan (<c>null</c> for an empty window). vatSys calls it on the UI
+    /// thread, and the window must be open when it returns (see <see cref="FlightPlanWindow.Open"/>).
+    /// </param>
     /// <exception cref="MissingMemberException">
     /// A vatSys member is not found (for example, after a vatSys update).
     /// </exception>
-    public static void Apply(IErrorReporter errorReporter)
+    public static void Apply(IErrorReporter errorReporter, Action<FDP2.FDR?> openWindow)
     {
         _errorReporter = errorReporter;
+        _openWindow = openWindow;
 
         var harmony = new Harmony(HarmonyId);
 
@@ -104,7 +111,7 @@ public static class FlightPlanWindowPatches
         try
         {
             LastOpenReplacedVatSysWindow = false;
-            FlightPlanWindow.Open(fdr, ErrorReporter);
+            OpenWindow(fdr);
             return true;
         }
         catch (Exception ex)
@@ -131,7 +138,7 @@ public static class FlightPlanWindowPatches
         try
         {
             var fdr = _vatSysWindowFdrField?.GetValue(vatSysWindow) as FDP2.FDR;
-            FlightPlanWindow.Open(fdr, ErrorReporter);
+            OpenWindow(fdr);
             LastOpenReplacedVatSysWindow = true;
 
             // The vatSys window is in its Show call. Do not show it, and close it after that call returns.
@@ -156,6 +163,13 @@ public static class FlightPlanWindowPatches
     }
 
     static IErrorReporter ErrorReporter => _errorReporter ?? NullErrorReporter.Instance;
+
+    static void OpenWindow(FDP2.FDR? fdr)
+    {
+        var openWindow = _openWindow
+            ?? throw new InvalidOperationException("The patches are not applied");
+        openWindow(fdr);
+    }
 
     static HarmonyMethod Patch(string methodName) => new(typeof(FlightPlanWindowPatches), methodName);
 }

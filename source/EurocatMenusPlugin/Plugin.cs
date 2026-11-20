@@ -77,7 +77,10 @@ public class Plugin : IPlugin
 
         try
         {
-            FlightPlanWindowPatches.Apply(errorReporter);
+            var flightPlanWindow = new FlightPlanWindow(
+                _serviceProvider.GetRequiredService<WindowManager>(),
+                errorReporter);
+            FlightPlanWindowPatches.Apply(errorReporter, flightPlanWindow.Open);
         }
         catch (Exception ex)
         {

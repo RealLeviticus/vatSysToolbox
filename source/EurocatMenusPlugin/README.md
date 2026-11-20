@@ -24,7 +24,7 @@ Eurocat window, and it does the same vatSys actions as the vatSys window.
 - Type in ASSR and OPDATA, and press Enter to apply them.
 - REGN shows and changes the `REG/` item in OTHER.
 - PSSR shows the SSR code that the coupled aircraft transmits.
-- MOVE moves the window, CLOSE closes it, and LOWER puts it behind the other vatSys windows.
+- The title bar has the same buttons as the other vatSys windows: close, minimise, and send to back.
 
 vatSys has no function for the other buttons and fields, thus they are not available. The runway and the SID or STAR
 are not in this window. Set them from the label or the strip.
