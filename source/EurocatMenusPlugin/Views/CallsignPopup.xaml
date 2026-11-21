@@ -23,11 +23,11 @@
         callsign, the sunken border, and the buttons.
     -->
     <StackPanel Width="80" Background="{toolbox:VatSysColour WindowBackground}">
-        <Border BorderThickness="1" BorderBrush="{toolbox:VatSysColour NonInteractiveText}" Padding="4">
+        <Border BorderThickness="2" BorderBrush="{toolbox:VatSysColour NonInteractiveText}" Padding="4">
             <TextBlock x:Name="CallsignText" Style="{StaticResource GenericTextStyle}" HorizontalAlignment="Center" />
         </Border>
 
-        <controls:BeveledBorder BevelType="Sunken" BorderThickness="{x:Static controls:Bevel.BorderThickness}">
+        <controls:BeveledBorder BevelType="Outline" BorderThickness="{x:Static controls:Bevel.BorderThickness}">
             <StackPanel x:Name="ButtonStack" />
         </controls:BeveledBorder>
     </StackPanel>
