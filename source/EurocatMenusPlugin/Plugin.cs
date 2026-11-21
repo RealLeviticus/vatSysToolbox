@@ -43,6 +43,10 @@ public class Plugin : IPlugin
 
     readonly IServiceProvider _serviceProvider;
 
+    // The patch that opens this menu is applied before the menus are added. Thus, the menu is enabled only when the
+    // menus show.
+    readonly CallsignMenu _callsignMenu;
+
     string IPlugin.Name => Name;
 
     public Plugin()
@@ -57,10 +61,10 @@ public class Plugin : IPlugin
             .BuildServiceProvider();
 
         var errorReporter = _serviceProvider.GetRequiredService<IErrorReporter>();
-        var callsignMenu = new CallsignMenu(errorReporter);
+        _callsignMenu = new CallsignMenu(errorReporter);
         try
         {
-            VatSysPatches.Apply(errorReporter, callsignMenu);
+            VatSysPatches.Apply(errorReporter, _callsignMenu);
         }
         catch (Exception ex)
         {
@@ -145,6 +149,10 @@ public class Plugin : IPlugin
         builtInEvents.SendCurrentState();
 
         menuBar.AddMenus(new TopMenu(topMenuViewModel), new BottomMenu(bottomMenuViewModel));
+
+        // When the menus are hidden, use the built-in aircraft menu
+        _callsignMenu.IsEnabled = menuBar.AreMenusVisible;
+        menuBar.AreMenusVisibleChanged += (_, _) => _callsignMenu.IsEnabled = menuBar.AreMenusVisible;
 
         var doubleAltPressFilter = new DoubleAltPressFilter(clock, DoubleAltPressInterval, () =>
         {

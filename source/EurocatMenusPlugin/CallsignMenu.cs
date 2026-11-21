@@ -16,8 +16,13 @@ namespace EurocatMenusPlugin;
 public class CallsignMenu(IErrorReporter errorReporter)
 {
     /// <summary>
-    /// Opens the menu at the mouse cursor. Gives <c>false</c> if the menu is not for this track. Then vatSys must open
-    /// its aircraft menu.
+    /// <c>true</c> while the menus show. When the menus are hidden, vatSys opens its aircraft menu.
+    /// </summary>
+    public bool IsEnabled { get; set; }
+
+    /// <summary>
+    /// Opens the menu at the mouse cursor. Gives <c>false</c> if the menu is not enabled, or is not for this track. Then
+    /// vatSys must open its aircraft menu.
     /// </summary>
     /// <remarks>
     /// vatSys shows a different menu in supervisor mode, and for a track that has no flight plan (for example, a quick
@@ -27,7 +32,7 @@ public class CallsignMenu(IErrorReporter errorReporter)
     /// <param name="isAsmgcs"><c>true</c> if the callsign was clicked on a ground display.</param>
     public bool TryOpen(Track track, bool isAsmgcs)
     {
-        if (MMI.SupervisorMode)
+        if (!IsEnabled || MMI.SupervisorMode)
             return false;
 
         var fdr = track.GetFDR(isAsmgcs);
