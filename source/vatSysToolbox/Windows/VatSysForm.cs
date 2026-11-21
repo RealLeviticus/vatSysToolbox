@@ -44,6 +44,7 @@ public class VatSysForm : BaseForm
     /// <param name="canClose">If <c>false</c>, the form has no close button.</param>
     /// <param name="canMinimise">If <c>false</c>, the form has no minimise button.</param>
     /// <param name="middleClickToClose">If <c>true</c>, a middle-click on the form closes it.</param>
+    /// <param name="canSendToBack">If <c>false</c>, the form has no send-to-back button.</param>
     public VatSysForm(
         string title,
         Func<IWindowHandle, FrameworkElement> createView,
@@ -51,12 +52,14 @@ public class VatSysForm : BaseForm
         bool sizeToContent,
         bool canClose = true,
         bool canMinimise = true,
-        bool middleClickToClose = false)
+        bool middleClickToClose = false,
+        bool canSendToBack = true)
     {
         Text = title;
         HasCloseButton = canClose;
         MinimizeBox = canMinimise;
         HasMinimizeButton = canMinimise;
+        HasSendBackButton = canSendToBack;
         MiddleClickClose = middleClickToClose;
 
         _errorReporter = errorReporter;

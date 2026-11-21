@@ -114,8 +114,9 @@ windowManager.OpenOrFocus(
 `WindowOptions` sets these options of the window:
 
 - `Size`: `WindowSize.Content` (the default) gives the window the size of the view, and the user cannot change it. `WindowSize.Absolute(width, height)` gives the window a size that the user can change.
-- `CanClose` and `CanMinimise` show or hide the close and minimise buttons.
+- `CanClose`, `CanMinimise`, and `CanSendToBack` show or hide the close, minimise, and send-to-back buttons.
 - `MiddleClickToClose`: a middle-click on the window background closes the window. The default is `false`.
+- `MinimumSize` and `MaximumSize` set the limits of the size that the user can give the window. Use them only with `WindowSize.Absolute`.
 
 The view receives an `IWindowHandle`. Give it to the view model, so that the view model can control its window:
 
