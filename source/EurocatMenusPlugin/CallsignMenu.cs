@@ -1,4 +1,3 @@
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using EurocatMenusPlugin.Views;
 using vatsys;
@@ -38,9 +37,9 @@ public class CallsignMenu(IErrorReporter errorReporter)
         // The top-left corner of the popup is at the tip of the mouse cursor, the same as the vatSys aircraft menu. The
         // mouse button that opened the popup is released on the popup, thus the release does not close it. vatSys menus
         // open and close at once. A popup has no animation by default.
-        var popup = new Popup
+        var popup = new System.Windows.Controls.Primitives.Popup
         {
-            Placement = PlacementMode.MousePoint,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint,
             StaysOpen = false,
             AllowsTransparency = true
         };
