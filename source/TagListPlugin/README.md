@@ -9,11 +9,7 @@ The Tag List shows the quick tags in vatSys. Each strip shows the aircraft ID (A
 
 ## Use
 
-Open the vatSys **Tools** menu. The plugin adds these items:
-
-- **Tag List** shows or hides the Tag List.
-- **Rad Tag** opens the vatSys Quick Tag window for the selected track.
-- **Del Tag** removes the quick tag of the selected track.
+Open the vatSys **Tools** menu. The plugin adds the **Tag List** item. It shows or hides the Tag List.
 
 In the Tag List:
 
