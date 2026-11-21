@@ -23,7 +23,7 @@
         callsign, the sunken border, and the buttons.
     -->
     <StackPanel Width="80" Background="{toolbox:VatSysColour WindowBackground}">
-        <Border BorderThickness="2" BorderBrush="{toolbox:VatSysColour NonInteractiveText}" Padding="4">
+        <Border BorderThickness="2" BorderBrush="{toolbox:VatSysColour GenericText}" Padding="4">
             <TextBlock x:Name="CallsignText" Style="{StaticResource GenericTextStyle}" HorizontalAlignment="Center" />
         </Border>
 
