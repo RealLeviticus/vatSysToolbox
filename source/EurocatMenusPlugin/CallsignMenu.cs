@@ -1,15 +1,20 @@
-using System.Windows.Forms;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using EurocatMenusPlugin.Views;
 using vatsys;
 using vatSysToolbox;
-using vatSysToolbox.Windows;
 
 namespace EurocatMenusPlugin;
 
 /// <summary>
 /// The menu that opens when the callsign of an aircraft is clicked. It replaces the vatSys aircraft menu.
 /// </summary>
-public class CallsignMenu(WindowManager windowManager, IErrorReporter errorReporter)
+/// <remarks>
+/// The menu is a WPF popup, and not a form. The ASD focuses itself when the mouse moves, and a form closes when it is
+/// not the active form. A popup does not become the active form. While the popup is open, it gets all the mouse input,
+/// thus the ASD does not get the mouse moves. A click outside the popup closes it.
+/// </remarks>
+public class CallsignMenu(IErrorReporter errorReporter)
 {
     /// <summary>
     /// Opens the menu at the mouse cursor. Gives <c>false</c> if the menu is not for this track. Then vatSys must open
@@ -30,8 +35,30 @@ public class CallsignMenu(WindowManager windowManager, IErrorReporter errorRepor
         if (fdr is null)
             return false;
 
-        var items = CreateItems(track, fdr);
-        windowManager.ShowPopup(windowHandle => new CallsignPopup(fdr.Callsign, items, windowHandle.Close));
+        // The top-left corner of the popup is at the tip of the mouse cursor, the same as the vatSys aircraft menu. The
+        // mouse button that opened the popup is released on the popup, thus the release does not close it. vatSys menus
+        // open and close at once. A popup has no animation by default.
+        var popup = new Popup
+        {
+            Placement = PlacementMode.MousePoint,
+            StaysOpen = false,
+            AllowsTransparency = true
+        };
+
+        var view = new CallsignPopup(fdr.Callsign, CreateItems(track, fdr), () => popup.IsOpen = false);
+
+        // A middle-click on the popup closes it
+        view.MouseDown += (_, e) =>
+        {
+            if (e.ChangedButton != MouseButton.Middle)
+                return;
+
+            e.Handled = true;
+            popup.IsOpen = false;
+        };
+
+        popup.Child = view;
+        popup.IsOpen = true;
         return true;
     }
 
@@ -42,7 +69,7 @@ public class CallsignMenu(WindowManager windowManager, IErrorReporter errorRepor
         {
             CreateItem("FPL", () => MMI.OpenFPWindow(fdr)),
             CreateItem("RTE", () => ToggleRoute(track)),
-            CreateItem("DCT", () => MMI.OpenDirectToMenu(fdr, Cursor.Position)),
+            CreateItem("DCT", () => MMI.OpenDirectToMenu(fdr, System.Windows.Forms.Cursor.Position)),
             CreateItem("RER", () => MMI.StartGraphicReroute(track))
         };
 

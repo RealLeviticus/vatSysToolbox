@@ -57,7 +57,7 @@ public class Plugin : IPlugin
             .BuildServiceProvider();
 
         var errorReporter = _serviceProvider.GetRequiredService<IErrorReporter>();
-        var callsignMenu = new CallsignMenu(_serviceProvider.GetRequiredService<WindowManager>(), errorReporter);
+        var callsignMenu = new CallsignMenu(errorReporter);
         try
         {
             VatSysPatches.Apply(errorReporter, callsignMenu);
