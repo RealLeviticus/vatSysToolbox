@@ -105,6 +105,9 @@
 
         <Setter Property="Template" Value="{StaticResource RaisedButtonTemplate}" />
 
+        <!-- vatSys does not show a focus rectangle on a button that has the keyboard focus -->
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+
         <Style.Triggers>
             <Trigger Property="IsPressed" Value="True">
                 <!-- vatSys uses this colour for the background of a pressed button -->
