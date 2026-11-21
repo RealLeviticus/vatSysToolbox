@@ -60,18 +60,28 @@ public static class VatSysPatches
     // vatSys can call the patched methods on any thread
     static IErrorReporter? _errorReporter;
 
+    static CallsignMenu? _callsignMenu;
+
+    /// <param name="errorReporter">Reports the exceptions in the patches.</param>
+    /// <param name="callsignMenu">Opens in place of the vatSys aircraft menu.</param>
     /// <exception cref="MissingMemberException">
     /// A vatSys member is not found (for example, after a vatSys update).
     /// </exception>
-    public static void Apply(IErrorReporter errorReporter)
+    public static void Apply(IErrorReporter errorReporter, CallsignMenu callsignMenu)
     {
         _errorReporter = errorReporter;
+        _callsignMenu = callsignMenu;
 
         var harmony = new Harmony(HarmonyId);
         var mainFormType = FindType(MainFormTypeName);
         var asdType = FindType(AsdTypeName);
 
         harmony.Patch(FindMethod(mainFormType, "UpdateClock"), postfix: Patch(nameof(ClockPostfix)));
+
+        // A click on a callsign in the ASD, the strips, or the sequence ladder opens the aircraft menu
+        harmony.Patch(
+            FindMethod(typeof(MMI), nameof(MMI.OpenAircraftMenu)),
+            prefix: Patch(nameof(OpenAircraftMenuPrefix)));
 
         foreach (var methodName in MainFormDisplaySettingsMethods)
             PatchDisplaySettings(harmony, mainFormType, methodName);
@@ -100,6 +110,24 @@ public static class VatSysPatches
     static void PatchDisplaySettings(Harmony harmony, Type type, string methodName)
     {
         harmony.Patch(FindMethod(type, methodName), postfix: Patch(nameof(DisplaySettingsPostfix)));
+    }
+
+    // Opens the callsign menu in place of the vatSys aircraft menu. If the callsign menu is not for this track, or if it
+    // cannot open, vatSys opens its aircraft menu. The names of the parameters must be the same as in the vatSys method.
+    static bool OpenAircraftMenuPrefix(Track Source, bool isASMGCS)
+    {
+        if (_callsignMenu is null)
+            return true;
+
+        try
+        {
+            return !_callsignMenu.TryOpen(Source, isASMGCS);
+        }
+        catch (Exception ex)
+        {
+            _errorReporter?.ReportError(ex, "Cannot open the callsign menu");
+            return true;
+        }
     }
 
     static void ClockPostfix()

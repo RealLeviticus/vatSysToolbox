@@ -62,8 +62,6 @@ public class Plugin : IPlugin
         _windowManager = serviceProvider.GetRequiredService<WindowManager>();
 
         _tagListMenuItem = AddMenuItem("Tag List", ToggleTagList);
-        AddMenuItem("Rad Tag", OpenQuickTagWindow);
-        AddMenuItem("Del Tag", RemoveSelectedQuickTag);
 
         // The view model tells the plugin when the window shows and closes, also when the window closes for a reason
         // that is not a toggle. The messages come on the UI thread.

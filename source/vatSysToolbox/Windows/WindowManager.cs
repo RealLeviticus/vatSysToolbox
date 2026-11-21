@@ -178,7 +178,8 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
             sizeToContent: options.Size is WindowSize.ContentSize,
             options.CanClose,
             options.CanMinimise,
-            options.MiddleClickToClose)
+            options.MiddleClickToClose,
+            options.CanSendToBack)
         {
             StartPosition = FormStartPosition.CenterParent
         };
@@ -186,6 +187,13 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
         // If the view closes the form before it has a handle, the form is disposed and cannot be shown.
         if (form.IsDisposed)
             return;
+
+        // Set the limits before the size, so that the form keeps the size in the limits
+        if (options.MinimumSize is { } minimumSize)
+            form.MinimumSize = ToDrawingSize(minimumSize);
+
+        if (options.MaximumSize is { } maximumSize)
+            form.MaximumSize = ToDrawingSize(maximumSize);
 
         if (options.Size is WindowSize.AbsoluteSize absoluteSize)
         {
@@ -209,6 +217,8 @@ public class WindowManager(IGuiInvoker guiInvoker, IErrorReporter errorReporter)
         _forms[key] = form;
         form.Show(mainForm);
     }
+
+    static System.Drawing.Size ToDrawingSize(Size size) => new((int)size.Width, (int)size.Height);
 
     void OnWindowClosed(string key, VatSysForm form)
     {

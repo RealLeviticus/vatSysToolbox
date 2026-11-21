@@ -108,6 +108,14 @@ bottomMenu:
         text: Restricted Areas
         recipient: dev.eoinmotherway.eurocatmenus
         messageType: dev.eoinmotherway.eurocatmenus.open-restricted-area-window
+      # The CPDLC plugin will handle this message and send these events. Until then, the CPDLC shim in this plugin does
+      # it. Thus, the recipient is this plugin.
+      - type: toggle
+        text: CPDLC
+        recipient: dev.eoinmotherway.eurocatmenus
+        messageType: dev.eoinmotherway.cpdlc.toggle-setup-window
+        activeOn: dev.eoinmotherway.cpdlc.setup-window-opened
+        inactiveOn: dev.eoinmotherway.cpdlc.setup-window-closed
       - type: separator
       - type: toggle
         text: Full Screen
@@ -222,13 +230,6 @@ bottomMenu:
 
   # The CPDLC plugin will handle these messages and send these events. Until then, the CPDLC shim in this plugin does
   # it. Thus, the recipient is this plugin.
-  - type: toggle
-    text: CPDLC SET
-    recipient: dev.eoinmotherway.eurocatmenus
-    messageType: dev.eoinmotherway.cpdlc.toggle-setup-window
-    activeOn: dev.eoinmotherway.cpdlc.setup-window-opened
-    inactiveOn: dev.eoinmotherway.cpdlc.setup-window-closed
-
   - type: toggle
     text: ADS Contract
     recipient: dev.eoinmotherway.eurocatmenus
